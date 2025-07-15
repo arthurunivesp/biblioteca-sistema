@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Categoria - Sala de Leitura{% endblock %}
+
+{% block content %}
+<div class="main-header d-flex justify-content-between align-items-center py-3 mb-4">
+    <div>
+        <h1 class="h2 mb-0">Nova Categoria</h1>
+        <p class="text-muted mb-0">Crie um novo gênero para organizar os livros</p>
+    </div>
+    <a href__="{{ url_for('categories') }}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-2"></i>
+        Voltar para Categorias
+    </a>
+</div>
+
+<div class="card fade-in">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-plus-circle text-primary me-2"></i>
+            Detalhes da Categoria
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Nome da Categoria *</label>
+                    <input type="text" class="form-control" name="name" required
+                           placeholder="Ex: Fantasia, Aventura, Biografia...">
+                </div>
+                <div class="col-md-6">
+                    <label for="color" class="form-label">Cor de Identificação</label>
+                    <input type="color" class="form-control form-control-color" name="color"
+                           value="#563d7c" title="Escolha uma cor">
+                </div>
+                <div class="col-12">
+                    <label for="description" class="form-label">Descrição</label>
+                    <textarea class="form-control" name="description" rows="3"
+                              placeholder="Descreva brevemente este gênero literário."></textarea>
+                </div>
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" name="active" id="activeSwitch" checked>
+                        <label class="form-check-label" for="activeSwitch">Categoria Ativa</label>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 d-flex justify-content-end gap-2">
+                <a href__="{{ url_for('categories') }}" class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>
+                    Criar Categoria
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

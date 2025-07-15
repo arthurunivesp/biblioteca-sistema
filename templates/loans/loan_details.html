@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Empréstimo - Sala de Leitura{% endblock %}
+
+{% block content %}
+<div class="main-header d-flex justify-content-between align-items-center py-3 mb-4">
+    <div>
+        <h1 class="h2 mb-0">Detalhes do Empréstimo</h1>
+        <p class="text-muted mb-0">ID do Empréstimo: {{ loan.id[:8] }}...</p>
+    </div>
+    <a href__="{{ url_for('loans') }}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-2"></i>
+        Voltar para Empréstimos
+    </a>
+</div>
+
+<div class="row">
+    <!-- Card de Informações -->
+    <div class="col-lg-8">
+        <div class="card fade-in">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle text-primary me-2"></i>
+                    Informações Completas
+                </h5>
+                <div>
+                    {% if loan.status == 'active' %}
+                        <span class="badge bg-warning fs-6">Ativo</span>
+                    {% elif loan.status == 'returned' %}
+                        <span class="badge bg-success fs-6">Devolvido</span>
+                    {% else %}
+                        <span class="badge bg-danger fs-6">Atrasado</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-book me-2"></i>Livro Emprestado</h6>
+                        <p><strong>Título:</strong> {{ loan.book.title }}</p>
+                        <p><strong>Autor:</strong> {{ loan.book.author }}</p>
+                        <p><strong>Exemplar:</strong> #{{ loan.book_copy.copy_number }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-user me-2"></i>Aluno</h6>
+                        <p><strong>Nome:</strong> {{ loan.student.name }}</p>
+                        <p><strong>Turma:</strong> {{ loan.student.class_room }}</p>
+                        <p><strong>Matrícula:</strong> {{ loan.student.registration_number or 'N/A' }}</p>
+                    </div>
+                </div>
+                <hr>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-calendar-alt me-2"></i>Datas</h6>
+                        <p><strong>Empréstimo:</strong> {{ loan.loan_date|format_date }}</p>
+                        <p><strong>Devolução Prevista:</strong> {{ loan.expected_return_date|format_date }}</p>
+                        <p><strong>Devolvido em:</strong> {{ loan.actual_return_date|format_date if loan.actual_return_date else ' - ' }}</p>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6><i class="fas fa-sticky-note me-2"></i>Observações</h6>
+                        <p class="text-muted">{{ loan.notes or 'Nenhuma observação.' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar de Ações -->
+    <div class="col-lg-4">
+        <div class="card fade-in" style="animation-delay: 0.1s">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-bolt text-warning me-2"></i>
+                    Ações
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if loan.status == 'active' %}
+                    <form method="POST" action="{{ url_for('return_loan', loan_id=loan.id) }}" class="d-grid">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            Registrar Devolução
+                        </button>
+                    </form>
+                    <p class="text-muted text-center mt-3">
+                        {% set remaining = loan.expected_return_date|days_remaining %}
+                        {% if remaining < 0 %}
+                            <strong class="text-danger">Atrasado há {{ -remaining }} dia(s)</strong>
+                        {% elif remaining == 0 %}
+                            <strong>Vence hoje!</strong>
+                        {% else %}
+                            Faltam {{ remaining }} dia(s)
+                        {% endif %}
+                    </p>
+                {% else %}
+                    <div class="text-center">
+                        <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                        <p>Este empréstimo já foi finalizado.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

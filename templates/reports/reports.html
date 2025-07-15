@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios - Sala de Leitura{% endblock %}
+
+{% block content %}
+<div class="main-header py-3 mb-4">
+    <div>
+        <h1 class="h2 mb-0">Relatórios e Estatísticas</h1>
+        <p class="text-muted mb-0">Veja os dados mais importantes da sua biblioteca</p>
+    </div>
+</div>
+
+<!-- Estatísticas Gerais -->
+<div class="stats-grid mb-4 fade-in">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-book"></i>
+        </div>
+        <div class="stat-number">{{ total_books }}</div>
+        <div class="stat-label">Total de Livros</div>
+        <div class="stat-trend positive">
+            <i class="fas fa-arrow-up"></i>
+            +{{ books_this_month }} este mês
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%);">
+            <i class="fas fa-users"></i>
+        </div>
+        <div class="stat-number">{{ total_students }}</div>
+        <div class="stat-label">Total de Alunos</div>
+        <div class="stat-trend positive">
+            <i class="fas fa-arrow-up"></i>
+            +{{ students_this_month }} este mês
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+            <i class="fas fa-book-open"></i>
+        </div>
+        <div class="stat-number">{{ total_loans }}</div>
+        <div class="stat-label">Total de Empréstimos</div>
+        <div class="stat-trend positive">
+            <i class="fas fa-arrow-up"></i>
+            +{{ loans_this_month }} este mês
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+            <i class="fas fa-percentage"></i>
+        </div>
+        <div class="stat-number">{{ utilization_rate }}%</div>
+        <div class="stat-label">Taxa de Utilização</div>
+        <div class="stat-trend">
+            <i class="fas fa-chart-line"></i>
+            Acervo ativo
+        </div>
+    </div>
+</div>
+
+<!-- Rankings -->
+<div class="row">
+    <!-- Top 5 Alunos que mais pegaram livros -->
+    <div class="col-lg-4 mb-4">
+        <div class="card fade-in" style="animation-delay: 0.2s">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-trophy text-warning me-2"></i>
+                    Top 5 Leitores
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if top_students %}
+                    {% for student in top_students %}
+                        <div class="ranking-item mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="ranking-position me-3">
+                                    {% if loop.index <= 3 %}
+                                        <i class="fas fa-medal {{ 'text-warning' if loop.index == 1 else ('text-secondary' if loop.index == 2 else 'text-dark') }}"></i>
+                                    {% else %}
+                                        <span class="ranking-number">{{ loop.index }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="ranking-info flex-grow-1">
+                                    <strong>{{ student.name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ student.class_room }}</small>
+                                </div>
+                                <div class="ranking-score">
+                                    <span class="badge bg-primary">{{ student.loan_count }}</span>
+                                    <br>
+                                    <small class="text-muted">empréstimos</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-user-graduate fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Sem dados ainda</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 5 Turmas -->
+    <div class="col-lg-4 mb-4">
+        <div class="card fade-in" style="animation-delay: 0.4s">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-school text-info me-2"></i>
+                    Top 5 Turmas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if top_classes %}
+                    {% for class_data in top_classes %}
+                        <div class="ranking-item mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="ranking-position me-3">
+                                    {% if loop.index <= 3 %}
+                                        <i class="fas fa-medal {{ 'text-warning' if loop.index == 1 else ('text-secondary' if loop.index == 2 else 'text-dark') }}"></i>
+                                    {% else %}
+                                        <span class="ranking-number">{{ loop.index }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="ranking-info flex-grow-1">
+                                    <strong>{{ class_data.class_room }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ class_data.student_count }} alunos</small>
+                                </div>
+                                <div class="ranking-score">
+                                    <span class="badge bg-info">{{ class_data.loan_count }}</span>
+                                    <br>
+                                    <small class="text-muted">empréstimos</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chalkboard-teacher fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Sem dados ainda</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 5 Livros mais emprestados -->
+    <div class="col-lg-4 mb-4">
+        <div class="card fade-in" style="animation-delay: 0.6s">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-fire text-danger me-2"></i>
+                    Top 5 Livros
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if top_books %}
+                    {% for book in top_books %}
+                        <div class="ranking-item mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="ranking-position me-3">
+                                    {% if loop.index <= 3 %}
+                                        <i class="fas fa-medal {{ 'text-warning' if loop.index == 1 else ('text-secondary' if loop.index == 2 else 'text-dark') }}"></i>
+                                    {% else %}
+                                        <span class="ranking-number">{{ loop.index }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="ranking-info flex-grow-1">
+                                    <strong>{{ book.title }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ book.author }}</small>
+                                </div>
+                                <div class="ranking-score">
+                                    <span class="badge bg-danger">{{ book.loan_count }}</span>
+                                    <br>
+                                    <small class="text-muted">empréstimos</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-book-reader fa-2x text-muted mb-2"></i>
+                        <p class="text-muted mb-0">Sem dados ainda</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row">
+    <!-- Gráfico de Empréstimos por Mês -->
+    <div class="col-lg-8 mb-4">
+        <div class="card fade-in" style="animation-delay: 0.8s">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line text-primary me-2"></i>
+                    Empréstimos por Mês
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="loansChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Categorias -->
+    <div class="col-lg-4 mb-4">
+        <div class="card fade-in" style="animation-delay: 1s">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie text-success me-2"></i>
+                    Categorias Populares
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categoriesChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alertas e Notificações -->
+<div class="row">
+    <div class="col-12">
+        <div class="card fade-in" style="animation-delay: 1.2s">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bell text-warning me-2"></i>
+                    Alertas e Notificações
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="alert alert-warning" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>{{ overdue_loans }} empréstimos em atraso</strong>
+                            {% if overdue_loans > 0 %}
+                                <br>
+                                <small>Necessitam de atenção imediata</small>
+                                <br>
+                                <a href="/loans?status=overdue" class="btn btn-sm btn-outline-warning mt-2">
+                                    Ver Empréstimos em Atraso
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            <strong>{{ due_this_week }} empréstimos vencem esta semana</strong>
+                            {% if due_this_week > 0 %}
+                                <br>
+                                <small>Lembre os alunos sobre a devolução</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const loansData = {{ loans_chart_data | tojson | safe }};
+const categoriesData = {{ categories_chart_data | tojson | safe }};
+
+// Gráfico de Empréstimos por Mês
+const loansCtx = document.getElementById('loansChart').getContext('2d');
+new Chart(loansCtx, {
+    type: 'line',
+    data: {
+        labels: loansData.labels,
+        datasets: [{
+            label: 'Empréstimos',
+            data: loansData.data,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.1)'
+                }
+            },
+            x: {
+                grid: {
+                    display: false
+                }
+            }
+        }
+    }
+});
+
+// Gráfico de Categorias
+const categoriesCtx = document.getElementById('categoriesChart').getContext('2d');
+new Chart(categoriesCtx, {
+    type: 'doughnut',
+    data: {
+        labels: categoriesData.labels,
+        datasets: [{
+            data: categoriesData.data,
+            backgroundColor: [
+                '#3b82f6',
+                '#10b981',
+                '#f59e0b',
+                '#ef4444',
+                '#8b5cf6',
+                '#06b6d4',
+                '#84cc16',
+                '#f97316'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 20,
+                    usePointStyle: true
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

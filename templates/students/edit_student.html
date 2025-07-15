@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% set current_year = 2025 %} <!-- Substitua por datetime.now().year se quiser dinâmico -->
+
+{% block title %}Editar Aluno - Sala de Leitura{% endblock %}
+
+{% block content %}
+<div class="main-header d-flex justify-content-between align-items-center py-3 mb-4">
+    <div>
+        <h1 class="h2 mb-0">Editar Aluno</h1>
+        <p class="text-muted mb-0">Altere as informações de {{ student.name }}</p>
+    </div>
+    <a href="{{ url_for('students') }}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-2"></i>
+        Voltar para Lista
+    </a>
+</div>
+
+<!-- Formulário de Edição -->
+<div class="card fade-in">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-edit text-primary me-2"></i>
+            Informações do Aluno
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <h6 class="mb-3">Dados Pessoais</h6>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Nome Completo *</label>
+                    <input type="text" class="form-control" name="name" required
+                           value="{{ student.name }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="registration_number" class="form-label">Nº de Matrícula</label>
+                    <input type="text" class="form-control" name="registration_number"
+                           value="{{ student.registration_number or '' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="birth_year" class="form-label">Ano de Nascimento *</label>
+                    <input type="number" class="form-control" name="birth_year" required
+                           min="1900" max="{{ current_year }}" value="{{ student.birth_year }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="class_room" class="form-label">Turma *</label>
+                    <input type="text" class="form-control" name="class_room" required
+                           value="{{ student.class_room }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="phone" class="form-label">Telefone do Aluno</label>
+                    <input type="tel" class="form-control" name="phone"
+                           value="{{ student.phone or '' }}">
+                </div>
+                <div class="col-12">
+                    <label for="address" class="form-label">Endereço</label>
+                    <textarea class="form-control" name="address" rows="2"
+                              placeholder="Rua, número, bairro...">{{ student.address or '' }}</textarea>
+                </div>
+            </div>
+
+            <h6 class="mb-3">Dados do Responsável</h6>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="guardian_name" class="form-label">Nome do Responsável *</label>
+                    <input type="text" class="form-control" name="guardian_name" required
+                           value="{{ student.guardian_name }}">
+                </div>
+                <div class="col-md-6">
+                    <label for="guardian_phone" class="form-label">Telefone do Responsável</label>
+                    <input type="tel" class="form-control" name="guardian_phone"
+                           value="{{ student.guardian_phone or '' }}">
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="mt-4 d-flex justify-content-end gap-2">
+                <a href="{{ url_for('students') }}" class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>
+                    Salvar Alterações
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Empréstimo - Sala de Leitura{% endblock %}
+
+{% block content %}
+<div class="main-header d-flex justify-content-between align-items-center py-3 mb-4">
+    <div>
+        <h1 class="h2 mb-0">Novo Empréstimo</h1>
+        <p class="text-muted mb-0">Registre a saída de um livro para um aluno</p>
+    </div>
+    <a href__="{{ url_for('loans') }}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-2"></i>
+        Voltar para Empréstimos
+    </a>
+</div>
+
+<!-- Passo a Passo -->
+<div class="row justify-content-center mb-4">
+    <div class="col-md-8">
+        <div class="progress-container">
+            <div class="progress-bar-custom" style="width: {{ (step - 1) * 50 }}%;"></div>
+            <div class="step-item {% if step >= 1 %}active{% endif %}">
+                <div class="step-icon"><i class="fas fa-qrcode"></i></div>
+                <p>1. Livro</p>
+            </div>
+            <div class="step-item {% if step >= 2 %}active{% endif %}">
+                <div class="step-icon"><i class="fas fa-user"></i></div>
+                <p>2. Aluno</p>
+            </div>
+            <div class="step-item {% if step >= 3 %}active{% endif %}">
+                <div class="step-icon"><i class="fas fa-check"></i></div>
+                <p>3. Confirmar</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Passo 1: Escanear Livro -->
+{% if step == 1 %}
+<div class="card fade-in">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-qrcode text-primary me-2"></i>
+            Passo 1: Identificar o Livro
+        </h5>
+    </div>
+    <div class="card-body text-center">
+        <form method="POST" class="d-inline">
+            <input type="hidden" name="step" value="scan_book">
+            <i class="fas fa-qrcode fa-5x text-primary mb-3"></i>
+            <h6 class="mb-3">Escaneie o QR Code ou Código de Barras do Livro</h6>
+            <div class="row justify-content-center">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="qr_code" 
+                               id="qrCodeInput" autofocus
+                               placeholder="Aguardando leitura...">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Passo 2: Selecionar Aluno -->
+{% if step == 2 %}
+<div class="card fade-in">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-user text-primary me-2"></i>
+            Passo 2: Selecionar o Aluno
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <strong>Livro Identificado:</strong> {{ book.title }} por {{ book.author }}
+            <br>
+            <strong>Exemplar #{{ copy.copy_number }}</strong> - Local: {{ copy.shelf }}-{{ copy.shelf_section }}-{{ copy.position_number }}
+        </div>
+        <form method="POST">
+            <input type="hidden" name="step" value="select_student">
+            <input type="hidden" name="book_id" value="{{ book.id }}">
+            <input type="hidden" name="copy_id" value="{{ copy.id }}">
+            
+            <div class="mb-3">
+                <label for="studentSearch" class="form-label">Buscar Aluno por Nome ou Matrícula</label>
+                <input type="text" class="form-control" id="studentSearch" 
+                       placeholder="Digite para buscar...">
+            </div>
+
+            <div id="studentList" class="list-group" style="max-height: 200px; overflow-y: auto;">
+                <!-- Resultados da busca via JS -->
+            </div>
+
+            <div class="mt-3">
+                <label for="student_id" class="form-label">Aluno Selecionado</label>
+                <select class="form-select" name="student_id" id="student_id" required>
+                    <option value="">Selecione um aluno da lista</option>
+                </select>
+            </div>
+            
+            <div class="mt-4 d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-arrow-right me-2"></i>
+                    Avançar para Confirmação
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Passo 3: Confirmar Empréstimo -->
+{% if step == 3 %}
+<div class="card fade-in">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-check text-primary me-2"></i>
+            Passo 3: Confirmar Empréstimo
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST">
+            <input type="hidden" name="step" value="confirm_loan">
+            <input type="hidden" name="book_id" value="{{ book.id }}">
+            <input type="hidden" name="copy_id" value="{{ copy.id }}">
+            <input type="hidden" name="student_id" value="{{ student.id }}">
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h6><i class="fas fa-book me-2"></i>Livro</h6>
+                    <p><strong>Título:</strong> {{ book.title }}</p>
+                    <p><strong>Autor:</strong> {{ book.author }}</p>
+                    <p><strong>Exemplar:</strong> #{{ copy.copy_number }}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6><i class="fas fa-user me-2"></i>Aluno</h6>
+                    <p><strong>Nome:</strong> {{ student.name }}</p>
+                    <p><strong>Turma:</strong> {{ student.class_room }}</p>
+                    <p><strong>Matrícula:</strong> {{ student.registration_number or 'N/A' }}</p>
+                </div>
+            </div>
+            <hr>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="loan_date" class="form-label">Data do Empréstimo</label>
+                    <input type="date" class="form-control" name="loan_date" 
+                           value="{{ today|date('Y-m-d') }}" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="expected_return_date" class="form-label">Data de Devolução Prevista</label>
+                    <input type="date" class="form-control" name="expected_return_date" 
+                           value="{{ return_date|date('Y-m-d') }}" required>
+                </div>
+                <div class="col-12">
+                    <label for="notes" class="form-label">Observações</label>
+                    <textarea class="form-control" name="notes" rows="2"
+                              placeholder="Alguma observação sobre o empréstimo?"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex justify-content-end">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check me-2"></i>
+                    Confirmar Empréstimo
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+{% if step == 2 %}
+<script>
+document.getElementById('studentSearch').addEventListener('input', function() {
+    const query = this.value;
+    if (query.length < 2) {
+        document.getElementById('studentList').innerHTML = '';
+        return;
+    }
+
+    fetch(`/api/students/search?q=${query}`)
+        .then(response => response.json())
+        .then(data => {
+            const studentList = document.getElementById('studentList');
+            const studentSelect = document.getElementById('student_id');
+            studentList.innerHTML = '';
+            studentSelect.innerHTML = '<option value="">Selecione um aluno da lista</option>';
+            
+            data.forEach(student => {
+                // Adicionar à lista visual
+                const item = document.createElement('a');
+                item.href = '#';
+                item.className = 'list-group-item list-group-item-action';
+                item.textContent = `${student.name} - Turma: ${student.class_room}`;
+                item.onclick = function(e) {
+                    e.preventDefault();
+                    document.getElementById('student_id').value = student.id;
+                    document.getElementById('studentSearch').value = student.name;
+                    studentList.innerHTML = ''; // Limpar lista após seleção
+                };
+                studentList.appendChild(item);
+                
+                // Adicionar ao select oculto
+                const option = document.createElement('option');
+                option.value = student.id;
+                option.textContent = student.name;
+                studentSelect.appendChild(option);
+});
+        });
+});
+</script>
+{% endif %}
+{% endblock %}

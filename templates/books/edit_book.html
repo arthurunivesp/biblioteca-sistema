@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Livro - Sala de Leitura{% endblock %}
+
+{% block content %}
+<div class="main-header d-flex justify-content-between align-items-center py-3 mb-4">
+    <div>
+        <h1 class="h2 mb-0">Editar Livro</h1>
+        <p class="text-muted mb-0">Altere as informações do livro</p>
+    </div>
+    <a href__="{{ url_for('book_details', book_id=book.id) }}" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left me-2"></i>
+        Voltar
+    </a>
+</div>
+
+<!-- Formulário de Edição -->
+<div class="card fade-in">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="fas fa-edit text-primary me-2"></i>
+            Informações do Livro
+        </h5>
+    </div>
+    <div class="card-body">
+        <form method="POST" id="editBookForm">
+            <div class="row g-3">
+                <!-- Título -->
+                <div class="col-md-6">
+                    <label for="title" class="form-label">Título do Livro *</label>
+                    <input type="text" class="form-control" name="title" 
+                           value="{{ book.title }}" required>
+                </div>
+
+                <!-- Autor -->
+                <div class="col-md-6">
+                    <label for="author" class="form-label">Autor *</label>
+                    <input type="text" class="form-control" name="author" 
+                           value="{{ book.author }}" required>
+                </div>
+
+                <!-- ISBN -->
+                <div class="col-md-4">
+                    <label for="isbn" class="form-label">ISBN</label>
+                    <input type="text" class="form-control" name="isbn" 
+                           value="{{ book.isbn or '' }}">
+                </div>
+
+                <!-- Categoria -->
+                <div class="col-md-4">
+                    <label for="category" class="form-label">Categoria *</label>
+                    <select class="form-select" name="category" required>
+                        <option value="">Selecione uma categoria</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat.id }}" 
+                                    {% if cat.id == book.category %}selected{% endif %}>
+                                {{ cat.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Ano de Publicação -->
+                <div class="col-md-4">
+                    <label for="publication_year" class="form-label">Ano de Publicação</label>
+                    <input type="number" class="form-control" name="publication_year" 
+                           min="1800" max="{{ current_year }}" 
+                           value="{{ book.publication_year or '' }}">
+                </div>
+
+                <!-- Editora -->
+                <div class="col-md-6">
+                    <label for="publisher" class="form-label">Editora</label>
+                    <input type="text" class="form-control" name="publisher" 
+                           value="{{ book.publisher or '' }}">
+                </div>
+
+                <!-- QR Code -->
+                <div class="col-md-6">
+                    <label for="qr_code" class="form-label">Código QR/Barras</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="qr_code" 
+                               value="{{ book.qr_code or '' }}" id="qrCodeInput">
+                        <button type="button" class="btn btn-outline-secondary" 
+                                onclick="openScanner()">
+                            <i class="fas fa-qrcode me-2"></i>
+                            Scanner
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Descrição -->
+                <div class="col-12">
+                    <label for="description" class="form-label">Descrição</label>
+                    <textarea class="form-control" name="description" rows="3" 
+                              placeholder="Breve descrição do livro...">{{ book.description or '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- Botões -->
+            <div class="mt-4 d-flex justify-content-end gap-2">
+                <a href__="{{ url_for('book_details', book_id=book.id) }}" 
+                   class="btn btn-secondary">
+                    <i class="fas fa-times me-2"></i>
+                    Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save me-2"></i>
+                    Salvar Alterações
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Scanner QR -->
+<div class="modal fade" id="scannerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-qrcode me-2"></i>
+                    Scanner de Código
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <i class="fas fa-qrcode fa-3x text-primary mb-3"></i>
+                    <h6>Aguardando Leitura</h6>
+                    <p class="text-muted">Conecte o leitor USB e escaneie o código</p>
+                    
+                    <div class="mt-3">
+                        <label for="manualCode" class="form-label">Ou digite o código manualmente:</label>
+                        <input type="text" class="form-control" id="manualCode" 
+                               placeholder="Digite ou escaneie o código...">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Fechar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="useManualCode()">
+                    Usar Código
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openScanner() {
+    const modal = new bootstrap.Modal(document.getElementById('scannerModal'));
+    modal.show();
+    
+    // Focar no campo de entrada manual
+    document.getElementById('manualCode').focus();
+}
+
+function useManualCode() {
+    const code = document.getElementById('manualCode').value.trim();
+    if (code) {
+        document.getElementById('qrCodeInput').value = code;
+        bootstrap.Modal.getInstance(document.getElementById('scannerModal')).hide();
+        document.getElementById('manualCode').value = '';
+    }
+}
+
+// Escutar entrada do scanner USB
+document.getElementById('manualCode').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        useManualCode();
+    }
+});
+</script>
+{% endblock %}
