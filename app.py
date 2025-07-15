@@ -210,8 +210,16 @@ def create_app(config_class=Config):
             Student.active == True, Student.class_room.isnot(None)
         ).distinct().order_by(Student.class_room).all()]
 
+        # Agrupar alunos por sala
+        students_by_class = {}
+        for student in students.items:
+            if student.class_room not in students_by_class:
+                students_by_class[student.class_room] = []
+            students_by_class[student.class_room].append(student)
+
         return render_template('students/students.html',
                               students=students,
+                              students_by_class=students_by_class,
                               classes=classes,
                               search=search,
                               class_filter=class_filter)
@@ -454,6 +462,23 @@ def create_app(config_class=Config):
                 flash(f'Erro ao cadastrar categoria: {str(e)}', 'error')
         return render_template('categories/add_category.html')
 
+    @app.route('/categories/<category_id>/edit', methods=['GET', 'POST'])
+    def edit_category(category_id):
+        category = Category.query.get_or_404(category_id)
+        if request.method == 'POST':
+            try:
+                category.name = request.form['name']
+                category.description = request.form.get('description', '').strip() or None
+                category.color = request.form.get('color', '#3b82f6')
+                category.updated_date = datetime.utcnow()
+                db.session.commit()
+                flash('Categoria atualizada com sucesso!', 'success')
+                return redirect(url_for('categories'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao atualizar categoria: {str(e)}', 'error')
+        return render_template('categories/add_category.html', category=category)
+
     @app.route('/categories/<category_id>/delete', methods=['POST'])
     def delete_category(category_id):
         category = Category.query.get_or_404(category_id)
@@ -624,5 +649,4 @@ def create_app(config_class=Config):
 if __name__ == '__main__':
     app = create_app()
     app.run(debug=True)
-    
-       
+      

@@ -49,7 +49,15 @@
                         </td>
                         <td>{{ category.books|length }}</td>
                         <td>
-                            <!-- Ações (editar, etc.) podem ser adicionadas aqui -->
+                            <a href="{{ url_for('edit_category', category_id=category.id) }}" class="btn btn-outline-warning btn-sm">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <form method="POST" action="{{ url_for('delete_category', category_id=category.id) }}" class="d-inline"
+                                  onsubmit="return confirm('Tem certeza que deseja excluir esta categoria?');">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="fas fa-trash"></i> Excluir
+                                </button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}
