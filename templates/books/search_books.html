@@ -232,16 +232,17 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-function confirmDelete(message) {
-    return confirm(message);
-}
+    {{ super() }}
+    <script>
+        function confirmDelete(message) {
+            return confirm(message);
+        }
 
-// Auto-submit do formulário quando Enter for pressionado no campo de busca
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        this.form.submit();
-    }
-});
-</script>
+        // Auto-submit do formulário quando Enter for pressionado no campo de busca
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                this.form.submit();
+            }
+        });
+    </script>
 {% endblock %}

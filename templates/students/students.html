@@ -236,9 +236,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-function confirmDelete(message) {
-    return confirm(message);
-}
-</script>
+    {{ super() }}
+    <script>
+        function confirmDelete(message) {
+            return confirm(message);
+        }
+    </script>
 {% endblock %}

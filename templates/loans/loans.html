@@ -312,23 +312,24 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-function confirmDelete(message) {
-    return confirm(message);
-}
-
-// Destacar empréstimos que vencem em breve
-document.addEventListener('DOMContentLoaded', function() {
-    const rows = document.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-        const daysText = row.querySelector('td:nth-child(4) small');
-        if (daysText && daysText.textContent.includes('dias restantes')) {
-            const days = parseInt(daysText.textContent.match(/\d+/)[0]);
-            if (days <= 2 && days > 0) {
-                row.classList.add('table-warning');
-            }
+    {{ super() }}
+    <script>
+        function confirmDelete(message) {
+            return confirm(message);
         }
-    });
-});
-</script>
+
+        // Destacar empréstimos que vencem em breve
+        document.addEventListener('DOMContentLoaded', function() {
+            const rows = document.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                const daysText = row.querySelector('td:nth-child(4) small');
+                if (daysText && daysText.textContent.includes('dias restantes')) {
+                    const days = parseInt(daysText.textContent.match(/\d+/)[0]);
+                    if (days <= 2 && days > 0) {
+                        row.classList.add('table-warning');
+                    }
+                }
+            });
+        });
+    </script>
 {% endblock %}

@@ -273,82 +273,83 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-const loansData = {{ loans_chart_data | tojson | safe }};
-const categoriesData = {{ categories_chart_data | tojson | safe }};
+    {{ super() }}
+    <script>
+        const loansData = {{ loans_chart_data | tojson | safe }};
+        const categoriesData = {{ categories_chart_data | tojson | safe }};
 
-// Gráfico de Empréstimos por Mês
-const loansCtx = document.getElementById('loansChart').getContext('2d');
-new Chart(loansCtx, {
-    type: 'line',
-    data: {
-        labels: loansData.labels,
-        datasets: [{
-            label: 'Empréstimos',
-            data: loansData.data,
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-            tension: 0.4,
-            fill: true
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: {
-                    color: 'rgba(0, 0, 0, 0.1)'
-                }
+        // Gráfico de Empréstimos por Mês
+        const loansCtx = document.getElementById('loansChart').getContext('2d');
+        new Chart(loansCtx, {
+            type: 'line',
+            data: {
+                labels: loansData.labels,
+                datasets: [{
+                    label: 'Empréstimos',
+                    data: loansData.data,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
             },
-            x: {
-                grid: {
-                    display: false
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
                 }
             }
-        }
-    }
-});
+        });
 
-// Gráfico de Categorias
-const categoriesCtx = document.getElementById('categoriesChart').getContext('2d');
-new Chart(categoriesCtx, {
-    type: 'doughnut',
-    data: {
-        labels: categoriesData.labels,
-        datasets: [{
-            data: categoriesData.data,
-            backgroundColor: [
-                '#3b82f6',
-                '#10b981',
-                '#f59e0b',
-                '#ef4444',
-                '#8b5cf6',
-                '#06b6d4',
-                '#84cc16',
-                '#f97316'
-            ]
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    padding: 20,
-                    usePointStyle: true
+        // Gráfico de Categorias
+        const categoriesCtx = document.getElementById('categoriesChart').getContext('2d');
+        new Chart(categoriesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: categoriesData.labels,
+                datasets: [{
+                    data: categoriesData.data,
+                    backgroundColor: [
+                        '#3b82f6',
+                        '#10b981',
+                        '#f59e0b',
+                        '#ef4444',
+                        '#8b5cf6',
+                        '#06b6d4',
+                        '#84cc16',
+                        '#f97316'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    }
                 }
             }
-        }
-    }
-});
-</script>
+        });
+    </script>
 {% endblock %}

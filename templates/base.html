@@ -163,6 +163,28 @@
         <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
     {% endif %}
     
-    {% block extra_scripts %}{% endblock %}
+    {% block extra_scripts %}
+    <script>
+        // Atualizar estatísticas em tempo real
+        function updateQuickStats() {
+            fetch('/api/stats')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('stat-total-books').textContent = data.stats.total_books || '0';
+                    document.getElementById('stat-active-loans').textContent = data.stats.active_loans || '0';
+                    document.getElementById('stat-total-students').textContent = data.stats.total_students || '0';
+                }
+            })
+            .catch(error => console.error('Erro ao atualizar estatísticas:', error));
+        }
+        
+        // Atualizar a cada 30 segundos
+        setInterval(updateQuickStats, 30000);
+        
+        // Carregar estatísticas iniciais
+        updateQuickStats();
+    </script>
+    {% endblock %}
 </body>
 </html>
