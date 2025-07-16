@@ -21,6 +21,7 @@ def create_app(config_class=Config):
 
     @app.route('/')
     def dashboard():
+        # Estatísticas básicas
         total_books = db.session.query(func.count(Book.id)).scalar()
         total_students = db.session.query(func.count(Student.id)).filter_by(active=True).scalar()
         active_loans = db.session.query(func.count(Loan.id)).filter(Loan.status == 'active').scalar()
@@ -58,7 +59,7 @@ def create_app(config_class=Config):
         loaned_copies = db.session.query(func.count(BookCopy.id)).filter(BookCopy.status == 'loaned').scalar()
         utilization_rate = (loaned_copies / total_copies * 100) if total_copies > 0 else 0
 
-        # Rankings (simplificados, ajuste conforme necessário)
+        # Rankings
         top_books = db.session.query(
             Book.title, Book.author, func.count(Loan.id).label('loan_count')
         ).join(Loan, Book.id == Loan.book_id).group_by(
@@ -78,27 +79,30 @@ def create_app(config_class=Config):
             Student.class_room
         ).order_by(func.count(Loan.id).desc()).limit(5).all()
 
-        # Dados para gráficos (opcional, se desejar gráficos no dashboard)
-        monthly_loans = db.session.query(
-            extract('month', Loan.loan_date).label('month'),
-            extract('year', Loan.loan_date).label('year'),
+        # Dados para gráficos (últimos 7 dias)
+        seven_days_ago = datetime.now() - timedelta(days=7)
+        loans_last_7_days = db.session.query(
+            extract('day', Loan.loan_date).label('day'),
             func.count(Loan.id).label('count')
-        ).filter(Loan.loan_date >= (datetime.now() - timedelta(days=180)).date()).group_by(
-            extract('year', Loan.loan_date), extract('month', Loan.loan_date)
-        ).order_by(extract('year', Loan.loan_date), extract('month', Loan.loan_date)).all()
+        ).filter(
+            Loan.loan_date >= seven_days_ago,
+            Loan.loan_date <= datetime.now()
+        ).group_by(extract('day', Loan.loan_date)).order_by(extract('day', Loan.loan_date)).all()
         loans_chart_data = {
-            'labels': [f"{m}/{y}" for m, y, _ in monthly_loans],
-            'data': [c for _, _, c in monthly_loans]
+            'labels': [f"{int(d)}" for d, _ in loans_last_7_days],
+            'data': [c for _, c in loans_last_7_days]
         }
 
-        books_by_category = db.session.query(
-            Category.name, func.count(Book.id).label('book_count')
-        ).join(Book, Category.id == Book.category).group_by(
-            Category.id, Category.name
-        ).order_by(func.count(Book.id).desc()).all()
-        categories_chart_data = {
-            'labels': [c[0] for c in books_by_category],
-            'data': [c[1] for c in books_by_category]
+        books_last_7_days = db.session.query(
+            extract('day', Book.created_date).label('day'),
+            func.count(Book.id).label('count')
+        ).filter(
+            Book.created_date >= seven_days_ago,
+            Book.created_date <= datetime.now()
+        ).group_by(extract('day', Book.created_date)).order_by(extract('day', Book.created_date)).all()
+        books_chart_data = {
+            'labels': [f"{int(d)}" for d, _ in books_last_7_days],
+            'data': [c for _, c in books_last_7_days]
         }
 
         # Dados recentes
@@ -123,7 +127,7 @@ def create_app(config_class=Config):
                             top_students=top_students,
                             top_classes=top_classes,
                             loans_chart_data=loans_chart_data,
-                            categories_chart_data=categories_chart_data,
+                            books_chart_data=books_chart_data,  # Novo dado para livros
                             recent_books=recent_books,
                             recent_loans=recent_loans)
 

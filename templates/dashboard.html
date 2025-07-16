@@ -256,7 +256,7 @@
     </div>
 </div>
 
-<!-- Mini Gráficos (opcional) -->
+<!-- Mini Gráficos -->
 <div class="row mt-4">
     <div class="col-md-6">
         <div class="card">
@@ -283,5 +283,77 @@
 
 {% block extra_scripts %}
     {{ super() }}
-    <!-- Scripts para os mini gráficos, se houver -->
+    <script>
+        // Gráfico de Empréstimos - Últimos 7 dias
+        const loansCtx = document.getElementById('sparklineLoans').getContext('2d');
+        new Chart(loansCtx, {
+            type: 'line',
+            data: {
+                labels: {{ loans_chart_data.labels | tojson | safe }},
+                datasets: [{
+                    label: 'Empréstimos',
+                    data: {{ loans_chart_data.data | tojson | safe }},
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { display: false },
+                        grid: { display: false }
+                    },
+                    x: {
+                        ticks: { display: false },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Gráfico de Novos Livros - Últimos 7 dias
+        const booksCtx = document.getElementById('sparklineBooks').getContext('2d');
+        new Chart(booksCtx, {
+            type: 'line',
+            data: {
+                labels: {{ books_chart_data.labels | tojson | safe }},
+                datasets: [{
+                    label: 'Livros',
+                    data: {{ books_chart_data.data | tojson | safe }},
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { display: false },
+                        grid: { display: false }
+                    },
+                    x: {
+                        ticks: { display: false },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    </script>
 {% endblock %}
