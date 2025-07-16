@@ -759,8 +759,28 @@ def create_app(config_class=Config):
         except Exception as e:
             return jsonify({'success': False, 'message': str(e)}), 500
 
+    # --- API para Estatísticas Rápidas ---
+    @app.route('/api/stats')
+    def api_stats():
+        try:
+            total_books = Book.query.count()
+            active_loans = Loan.query.filter_by(status='active').count()
+            total_students = Student.query.filter_by(active=True).count()
+
+            return jsonify({
+                'success': True,
+                'stats': {
+                    'total_books': total_books,
+                    'active_loans': active_loans,
+                    'total_students': total_students
+                }
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
+
     return app
 
 if __name__ == '__main__':
     app = create_app()
     app.run(debug=True, host='0.0.0.0')
+    

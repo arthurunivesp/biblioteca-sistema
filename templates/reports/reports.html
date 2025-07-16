@@ -208,7 +208,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                <canvas id="loansChart" height="100"></canvas>
+                <canvas id="loansChart" height="200"></canvas>
             </div>
         </div>
     </div>
@@ -223,7 +223,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                <canvas id="categoriesChart"></canvas>
+                <canvas id="categoriesChart" height="200"></canvas>
             </div>
         </div>
     </div>
@@ -338,7 +338,7 @@ new Chart(categoriesCtx, {
     },
     options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
             legend: {
                 position: 'bottom',
