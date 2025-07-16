@@ -175,11 +175,16 @@ class BarcodeScanner {
     }
     
     handleBookForm(code) {
-        // Preencher campo QR Code
+        // Preencher campo QR Code e ISBN
         const qrCodeInput = document.querySelector('input[name="qr_code"]');
+        const isbnInput = document.querySelector('input[name="isbn"]');
         if (qrCodeInput) {
             qrCodeInput.value = code;
             this.showSuccess('Código QR adicionado ao livro');
+        }
+        if (isbnInput) {
+            isbnInput.value = code; // Preenche o ISBN com o código escaneado
+            this.showSuccess('ISBN preenchido com o código escaneado');
         }
         
         // Tentar buscar informações do livro por ISBN
@@ -309,11 +314,11 @@ class BarcodeScanner {
                         </div>
                         <p>O que você gostaria de fazer?</p>
                         <div class="d-grid gap-2">
-                            <a href__="/books?search=${encodeURIComponent(code)}" class="btn btn-primary">
+                            <a href="/books?search=${encodeURIComponent(code)}" class="btn btn-primary">
                                 <i class="fas fa-search me-2"></i>
                                 Buscar Livro
                             </a>
-                            <a href__="/loans/new" class="btn btn-success">
+                            <a href="/loans/new" class="btn btn-success">
                                 <i class="fas fa-plus me-2"></i>
                                 Novo Empréstimo
                             </a>

@@ -24,132 +24,14 @@ function initializeApp() {
 }
 
 /**
- * Scanner QR/Código de Barras
+ * Inicializar Scanner
  */
 function initScanner() {
-    const scannerInputs = document.querySelectorAll('#scannerInput, .scanner-input');
-    
-    scannerInputs.forEach(input => {
-        if (input) {
-            // Auto-focus para leitores USB
-            input.addEventListener('focus', function() {
-                this.placeholder = 'Aguardando leitura do código...';
-                this.classList.add('scanner-active');
-            });
-            
-            input.addEventListener('blur', function() {
-                this.placeholder = 'Passe o leitor ou digite o código...';
-                this.classList.remove('scanner-active');
-            });
-            
-            // Processar código quando Enter for pressionado
-            input.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    processScannedCode(this.value.trim());
-                }
-            });
-            
-            // Processar automaticamente após um breve delay (para leitores rápidos)
-            let scanTimeout;
-            input.addEventListener('input', function() {
-                clearTimeout(scanTimeout);
-                const code = this.value.trim();
-                
-                if (code.length >= 8) { // Mínimo para ISBN/QR
-                    scanTimeout = setTimeout(() => {
-                        processScannedCode(code);
-                    }, 500); // 500ms de delay
-                }
-            });
-        }
-    });
-}
-
-/**
- * Processar código escaneado
- */
-function processScannedCode(code) {
-    if (!code) return;
-    
-    console.log('📱 Código escaneado:', code);
-    
-    // Mostrar loading
-    showLoading('Processando código...');
-    
-    // Fazer requisição para API
-    fetch('/api/scan-qr', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ qr_code: code })
-    })
-    .then(response => response.json())
-    .then(data => {
-        hideLoading();
-        
-        if (data.success) {
-            showSuccess(`Livro encontrado: ${data.book.title}`);
-            
-            // Se estiver na página de empréstimo, preencher dados
-            if (window.location.pathname.includes('/loans/new')) {
-                fillLoanForm(data.book);
-            }
-            // Se estiver na página de busca, mostrar detalhes
-            else if (window.location.pathname.includes('/books')) {
-                showBookDetails(data.book);
-            }
-        } else {
-            showError(data.message || 'Código não encontrado');
-        }
-    })
-    .catch(error => {
-        hideLoading();
-        console.error('Erro ao processar código:', error);
-        showError('Erro ao processar código. Tente novamente.');
-    });
-}
-
-/**
- * Preencher formulário de empréstimo
- */
-function fillLoanForm(book) {
-    // Selecionar livro no dropdown
-    const bookSelect = document.getElementById('book_id');
-    if (bookSelect) {
-        bookSelect.value = book.id;
-        bookSelect.dispatchEvent(new Event('change'));
+    console.log('🔍 Inicializando Scanner de Código de Barras...');
+    // Apenas inicializar a instância do BarcodeScanner
+    if (typeof window.barcodeScanner === 'undefined' && typeof BarcodeScanner !== 'undefined') {
+        window.barcodeScanner = new BarcodeScanner();
     }
-    
-    // Carregar exemplares disponíveis
-    loadBookCopies(book.id);
-}
-
-/**
- * Carregar exemplares de um livro
- */
-function loadBookCopies(bookId) {
-    fetch(`/api/book-copies/${bookId}`)
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const copySelect = document.getElementById('book_copy_id');
-            if (copySelect) {
-                copySelect.innerHTML = '<option value="">Selecione o exemplar...</option>';
-                
-                data.copies.forEach(copy => {
-                    const option = document.createElement('option');
-                    option.value = copy.id;
-                    option.textContent = `Exemplar ${copy.copy_number} - ${copy.location} (${copy.condition})`;
-                    copySelect.appendChild(option);
-                });
-            }
-        }
-    })
-    .catch(error => {
-        console.error('Erro ao carregar exemplares:', error);
-    });
 }
 
 /**

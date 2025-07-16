@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.sql import func
 from datetime import datetime, timedelta
 import uuid
 
@@ -18,7 +19,6 @@ class Category(db.Model):
     created_date = db.Column(db.DateTime, default=datetime.utcnow)
     updated_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relacionamento - CORRIGIDO
     books = db.relationship('Book', backref='category_obj', lazy=True)
     
     def to_dict(self):
@@ -37,7 +37,7 @@ class Book(db.Model):
     id = db.Column(db.String(36), primary_key=True, default=generate_uuid)
     title = db.Column(db.String(200), nullable=False)
     author = db.Column(db.String(200), nullable=False)
-    isbn = db.Column(db.String(20))
+    isbn = db.Column(db.String(20), unique=True)
     total_copies = db.Column(db.Integer, nullable=False)
     category = db.Column(db.String(36), db.ForeignKey('categories.id'))
     publisher = db.Column(db.String(200))
@@ -48,13 +48,14 @@ class Book(db.Model):
     created_date = db.Column(db.DateTime, default=datetime.utcnow)
     updated_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relacionamentos - CORRIGIDOS
     copies = db.relationship('BookCopy', backref='book', lazy=True, cascade='all, delete-orphan')
     loans = db.relationship('Loan', backref='book', lazy=True)
     
     @property
     def available_copies(self):
-        return len([copy for copy in self.copies if copy.status == 'available'])
+        return db.session.query(func.count(BookCopy.id)).filter(
+            BookCopy.book_id == self.id, BookCopy.status == 'available'
+        ).scalar()
     
     def to_dict(self):
         return {
@@ -83,13 +84,12 @@ class BookCopy(db.Model):
     shelf = db.Column(db.String(10), nullable=False)
     shelf_section = db.Column(db.String(10), nullable=False)
     position_number = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(20), default='available')  # available, loaned, maintenance, lost
-    condition = db.Column(db.String(20), default='good')  # excellent, good, fair, poor
+    status = db.Column(db.String(20), db.CheckConstraint("status IN ('available', 'loaned', 'maintenance', 'lost')"), default='available', nullable=False)
+    condition = db.Column(db.String(20), db.CheckConstraint("condition IN ('excellent', 'good', 'fair', 'poor')"), default='good', nullable=False)
     notes = db.Column(db.Text)
     created_date = db.Column(db.DateTime, default=datetime.utcnow)
     updated_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relacionamento - CORRIGIDO
     loans = db.relationship('Loan', backref='book_copy', lazy=True)
     
     @property
@@ -126,7 +126,6 @@ class Student(db.Model):
     created_date = db.Column(db.DateTime, default=datetime.utcnow)
     updated_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # Relacionamento - CORRIGIDO
     loans = db.relationship('Loan', backref='student', lazy=True)
     
     @property
@@ -135,11 +134,11 @@ class Student(db.Model):
     
     @property
     def total_loans(self):
-        return len(self.loans)
+        return db.session.query(func.count(Loan.id)).filter_by(student_id=self.id).scalar()
     
     @property
     def active_loans(self):
-        return len([loan for loan in self.loans if loan.status == 'active'])
+        return db.session.query(func.count(Loan.id)).filter_by(student_id=self.id, status='active').scalar()
     
     def to_dict(self):
         return {
@@ -168,7 +167,7 @@ class Loan(db.Model):
     loan_date = db.Column(db.Date, nullable=False, default=datetime.utcnow().date)
     expected_return_date = db.Column(db.Date, nullable=False)
     actual_return_date = db.Column(db.Date)
-    status = db.Column(db.String(20), default='active')  # active, returned, overdue
+    status = db.Column(db.String(20), db.CheckConstraint("status IN ('active', 'returned', 'overdue')"), default='active', nullable=False)
     notes = db.Column(db.Text)
     librarian_id = db.Column(db.String(36))  # Para futuras implementações
     created_date = db.Column(db.DateTime, default=datetime.utcnow)

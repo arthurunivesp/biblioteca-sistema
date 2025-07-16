@@ -1,304 +1,251 @@
 {% extends "base.html" %}
-
-{% block title %}Cadastrar Livro - Sala de Leitura{% endblock %}
-
+{% block title %}Adicionar Novo Livro{% endblock %}
 {% block content %}
-<div class="main-header d-flex justify-content-between align-items-center py-3 mb-4">
-    <div>
-        <h1 class="h2 mb-0">Cadastrar Novo Livro</h1>
-        <p class="text-muted mb-0">Adicione um novo livro ao acervo da biblioteca</p>
-    </div>
-    <a href="/books" class="btn btn-outline-primary">
-        <i class="fas fa-arrow-left me-2"></i>
-        Voltar para Busca
-    </a>
-</div>
-
-<form method="POST" class="needs-validation" novalidate>
-    <!-- Scanner QR Code -->
-    <div class="card mb-4 fade-in">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-qrcode text-primary me-2"></i>
-                Scanner QR Code / Código de Barras
-            </h5>
-        </div>
+<div class="container mt-4">
+    <h2><i class="fas fa-plus me-2"></i> Adicionar Novo Livro</h2>
+    <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <div class="scanner-container">
-                <div class="scanner-icon">
-                    <i class="fas fa-qrcode"></i>
-                </div>
-                <h5 class="mb-3">Escaneie o QR Code ou Código de Barras</h5>
-                <p class="text-muted mb-4">
-                    Use um leitor USB ou digite manualmente o código do livro
-                </p>
-                <div class="row justify-content-center">
-                    <div class="col-md-6">
-                        <input type="text" class="form-control form-control-lg text-center scanner-input" 
-                               name="qr_code" id="scannerInput" 
-                               placeholder="Passe o leitor ou digite o código...">
-                        <small class="form-text text-muted mt-2">
-                            Campo compatível com leitores USB de código de barras
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Informações do Livro -->
-    <div class="card mb-4 fade-in" style="animation-delay: 0.2s">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-book text-primary me-2"></i>
-                Informações do Livro
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="title" class="form-label">Título do Livro *</label>
-                        <input type="text" class="form-control" id="title" name="title" required>
-                        <div class="invalid-feedback">
-                            Por favor, informe o título do livro.
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" class="needs-validation" novalidate>
+                {{ form.hidden_tag() if form else '' }}
+                <div class="row g-3">
+                    <!-- Campo de Escaneamento -->
+                    <div class="col-12">
+                        <label for="scannerInput" class="form-label">Escanear Código de Barras/QR</label>
+                        <input type="text" id="scannerInput" class="form-control scanner-input" placeholder="Passe o leitor ou digite o código..." autocomplete="off">
+                        <small class="text-muted">Use o leitor USB ou digite o código manualmente e pressione Enter.</small>
                     </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
+
+                    <!-- Dados do Livro -->
+                    <div class="col-12 col-md-6">
+                        <label for="title" class="form-label">Título *</label>
+                        <input type="text" name="title" id="title" class="form-control" required>
+                        <div class="invalid-feedback">O título é obrigatório.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
                         <label for="author" class="form-label">Autor *</label>
-                        <input type="text" class="form-control" id="author" name="author" required>
-                        <div class="invalid-feedback">
-                            Por favor, informe o autor do livro.
-                        </div>
+                        <input type="text" name="author" id="author" class="form-control" required>
+                        <div class="invalid-feedback">O autor é obrigatório.</div>
                     </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="mb-3">
+                    <div class="col-12 col-md-4">
                         <label for="isbn" class="form-label">ISBN</label>
-                        <input type="text" class="form-control" id="isbn" name="isbn" 
-                               placeholder="978-85-123456-7-8">
-                        <small class="form-text text-muted">Código internacional do livro</small>
+                        <input type="text" name="isbn" id="isbn" class="form-control" placeholder="Ex.: 978-0-7475-3269-2">
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
+                    <div class="col-12 col-md-4">
                         <label for="category" class="form-label">Categoria *</label>
-                        <select class="form-select" id="category" name="category" required>
-                            <option value="">Selecione a categoria</option>
+                        <select name="category" id="category" class="form-select" required>
+                            <option value="">Selecione uma categoria</option>
                             {% for category in categories %}
                                 <option value="{{ category.id }}">{{ category.name }}</option>
                             {% endfor %}
                         </select>
-                        <div class="invalid-feedback">
-                            Por favor, selecione uma categoria.
-                        </div>
+                        <div class="invalid-feedback">A categoria é obrigatória.</div>
                     </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="mb-3">
-                        <label for="total_copies" class="form-label">Quantidade de Exemplares *</label>
-                        <input type="number" class="form-control" id="total_copies" name="total_copies" 
-                               min="1" max="50" value="1" required>
-                        <div class="invalid-feedback">
-                            Informe a quantidade de exemplares (1-50).
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="mb-3">
+                    <div class="col-12 col-md-4">
                         <label for="publisher" class="form-label">Editora</label>
-                        <input type="text" class="form-control" id="publisher" name="publisher">
+                        <input type="text" name="publisher" id="publisher" class="form-control">
                     </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="mb-3">
+                    <div class="col-12 col-md-4">
                         <label for="publication_year" class="form-label">Ano de Publicação</label>
-                        <input type="number" class="form-control" id="publication_year" name="publication_year" 
-                               min="1800" max="2025" required>
+                        <input type="number" name="publication_year" id="publication_year" class="form-control" min="1900" max="{{ current_year }}" placeholder="Ex.: 2023">
+                    </div>
+                    <div class="col-12 col-md-8">
+                        <label for="description" class="form-label">Descrição</label>
+                        <textarea name="description" id="description" class="form-control" rows="3" placeholder="Breve descrição do livro..."></textarea>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="qr_code" class="form-label">Código QR (Opcional)</label>
+                        <input type="text" name="qr_code" id="qr_code" class="form-control" placeholder="Código único do livro">
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="total_copies" class="form-label">Número de Cópias *</label>
+                        <input type="number" name="total_copies" id="total_copies" class="form-control" value="1" min="1" required>
+                        <div class="invalid-feedback">O número de cópias é obrigatório.</div>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="baseShelf" class="form-label">Estante Base</label>
+                        <input type="text" id="baseShelf" class="form-control" placeholder="Ex.: A, B, C..." maxlength="2">
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label for="baseSection" class="form-label">Prateleira Base</label>
+                        <input type="text" id="baseSection" class="form-control" placeholder="Ex.: 1, 2, 3..." maxlength="2">
                     </div>
                 </div>
-            </div>
-            
-            <div class="mb-3">
-                <label for="description" class="form-label">Descrição</label>
-                <textarea class="form-control" id="description" name="description" rows="3" 
-                          placeholder="Breve descrição do livro..."></textarea>
-            </div>
-        </div>
-    </div>
 
-    <!-- Localização dos Exemplares -->
-    <div class="card mb-4 fade-in" style="animation-delay: 0.4s">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-map-marker-alt text-primary me-2"></i>
-                Localização dos Exemplares
-            </h5>
-        </div>
-        <div class="card-body">
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Sistema de Localização:</strong>
-                Configure a localização de cada exemplar usando o formato: <strong>Estante-Prateleira-Posição</strong>
-                <br>Exemplo: A-1-5 significa Estante A, Prateleira 1, Posição 5
-            </div>
-            
-            <!-- Configuração Base -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <label for="baseShelf" class="form-label">Estante Base (para todos os exemplares)</label>
-                    <input type="text" class="form-control" id="baseShelf" placeholder="A, B, C..." maxlength="2">
-                    <small class="form-text text-muted">Todos os exemplares usarão esta estante</small>
+                <!-- Formulários Dinâmicos de Localização -->
+                <div class="mt-4">
+                    <h5>Localizações dos Exemplares</h5>
+                    <div id="locationFormsContainer"></div>
                 </div>
-                <div class="col-md-6">
-                    <label for="baseSection" class="form-label">Prateleira Base</label>
-                    <input type="text" class="form-control" id="baseSection" placeholder="1, 2, 3..." maxlength="2">
-                    <small class="form-text text-muted">Todos os exemplares usarão esta prateleira</small>
-                </div>
-            </div>
-            
-            <!-- Container para formulários de localização -->
-            <div id="locationFormsContainer">
-                <!-- Será preenchido via JavaScript -->
-            </div>
-        </div>
-    </div>
 
-    <!-- Botões de Ação -->
-    <div class="card fade-in" style="animation-delay: 0.6s">
-        <div class="card-body">
-            <div class="d-flex justify-content-end gap-3">
-                <a href="/books" class="btn btn-outline-secondary">
-                    <i class="fas fa-times me-2"></i>
-                    Cancelar
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    <i class="fas fa-save me-2"></i>
-                    Cadastrar Livro
-                </button>
-            </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i> Salvar Livro
+                    </button>
+                    <a href="{{ url_for('search_books') }}" class="btn btn-secondary">
+                        <i class="fas fa-times me-2"></i> Cancelar
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
-</form>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-// Gerar formulários de localização quando a quantidade mudar
-document.getElementById('total_copies').addEventListener('input', function() {
-    const totalCopies = parseInt(this.value) || 1;
-    generateLocationForms(totalCopies);
-});
+    // Inicializar formulários de localização ao carregar
+    document.addEventListener('DOMContentLoaded', function() {
+        generateLocationForms(1); // Gera 1 formulário inicialmente
+    });
 
-// Gerar formulários iniciais
-generateLocationForms(1);
+    // Gerar formulários de localização quando a quantidade mudar
+    document.getElementById('total_copies').addEventListener('input', function() {
+        const totalCopies = parseInt(this.value) || 1;
+        generateLocationForms(totalCopies);
+    });
 
-function generateLocationForms(totalCopies) {
-    const container = document.getElementById('locationFormsContainer');
-    container.innerHTML = '';
-    
-    for (let i = 1; i <= totalCopies; i++) {
-        const formHtml = `
-            <div class="location-card fade-in" style="animation-delay: ${i * 0.1}s">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h6 class="mb-0">
-                        <i class="fas fa-book me-2"></i>
-                        Exemplar ${i}
-                    </h6>
-                    <span class="location-badge" id="location-preview-${i}">
-                        Localização: ?-?-?
-                    </span>
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-3">
-                        <label class="form-label">Estante *</label>
-                        <input type="text" class="form-control" name="shelf_${i}" 
-                               placeholder="A, B, C..." required maxlength="2"
-                               oninput="updateLocationPreview(${i})">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Prateleira *</label>
-                        <input type="text" class="form-control" name="shelf_section_${i}" 
-                               placeholder="1, 2, 3..." required maxlength="2"
-                               oninput="updateLocationPreview(${i})">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Posição *</label>
-                        <input type="number" class="form-control" name="position_number_${i}" 
-                               value="${i}" min="1" max="999" required
-                               oninput="updateLocationPreview(${i})">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Estado</label>
-                        <select class="form-select" name="condition_${i}">
-                            <option value="excellent">Excelente</option>
-                            <option value="good" selected>Bom</option>
-                            <option value="fair">Regular</option>
-                            <option value="poor">Ruim</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="mt-3">
-                    <label class="form-label">Observações</label>
-                    <input type="text" class="form-control" name="notes_${i}" 
-                           placeholder="Observações específicas sobre este exemplar...">
-                </div>
-            </div>
-        `;
-        
-        container.innerHTML += formHtml;
-    }
-    
-    // Auto-preencher com valores base
-    autoFillLocations();
-}
+    // Função para gerar formulários de localização
+    function generateLocationForms(totalCopies) {
+        const container = document.getElementById('locationFormsContainer');
+        if (!container) return;
 
-function updateLocationPreview(copyNumber) {
-    const shelf = document.querySelector(`input[name="shelf_${copyNumber}"]`).value || '?';
-    const section = document.querySelector(`input[name="shelf_section_${copyNumber}"]`).value || '?';
-    const position = document.querySelector(`input[name="position_number_${copyNumber}"]`).value || '?';
-    
-    const preview = document.getElementById(`location-preview-${copyNumber}`);
-    if (preview) {
-        preview.textContent = `Localização: ${shelf}-${section}-${position}`;
-    }
-}
+        container.innerHTML = '';
 
-function autoFillLocations() {
-    const baseShelf = document.getElementById('baseShelf').value;
-    const baseSection = document.getElementById('baseSection').value;
-    
-    if (baseShelf || baseSection) {
-        const totalCopies = parseInt(document.getElementById('total_copies').value) || 1;
-        
         for (let i = 1; i <= totalCopies; i++) {
-            if (baseShelf) {
-                const shelfInput = document.querySelector(`input[name="shelf_${i}"]`);
-                if (shelfInput) shelfInput.value = baseShelf.toUpperCase();
-            }
+            const formHtml = `
+                <div class="location-card fade-in" style="animation-delay: ${i * 0.1}s">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0">
+                            <i class="fas fa-book me-2"></i>
+                            Exemplar ${i}
+                        </h6>
+                        <span class="location-badge" id="location-preview-${i}">
+                            Localização: ?-?-?
+                        </span>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label class="form-label">Estante *</label>
+                            <input type="text" class="form-control" name="shelf_${i}" 
+                                   placeholder="A, B, C..." required maxlength="2"
+                                   oninput="updateLocationPreview(${i})">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Prateleira *</label>
+                            <input type="text" class="form-control" name="shelf_section_${i}" 
+                                   placeholder="1, 2, 3..." required maxlength="2"
+                                   oninput="updateLocationPreview(${i})">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Posição *</label>
+                            <input type="number" class="form-control" name="position_number_${i}" 
+                                   value="${i}" min="1" max="999" required
+                                   oninput="updateLocationPreview(${i})">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" name="condition_${i}">
+                                <option value="excellent">Excelente</option>
+                                <option value="good" selected>Bom</option>
+                                <option value="fair">Regular</option>
+                                <option value="poor">Ruim</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <label class="form-label">Observações</label>
+                        <input type="text" class="form-control" name="notes_${i}" 
+                               placeholder="Observações específicas sobre este exemplar...">
+                    </div>
+                </div>
+            `;
             
-            if (baseSection) {
-                const sectionInput = document.querySelector(`input[name="shelf_section_${i}"]`);
-                if (sectionInput) sectionInput.value = baseSection;
-            }
-            
-            updateLocationPreview(i);
+            container.innerHTML += formHtml;
+        }
+        
+        autoFillLocations();
+    }
+
+    // Atualizar preview da localização
+    function updateLocationPreview(copyNumber) {
+        const shelf = document.querySelector(`input[name="shelf_${copyNumber}"]`).value || '?';
+        const section = document.querySelector(`input[name="shelf_section_${copyNumber}"]`).value || '?';
+        const position = document.querySelector(`input[name="position_number_${copyNumber}"]`).value || '?';
+        
+        const preview = document.getElementById(`location-preview-${copyNumber}`);
+        if (preview) {
+            preview.textContent = `Localização: ${shelf}-${section}-${position}`;
         }
     }
-}
 
-// Listeners para auto-preenchimento
-document.getElementById('baseShelf').addEventListener('input', autoFillLocations);
-document.getElementById('baseSection').addEventListener('input', autoFillLocations);
+    // Auto-preencher localizações baseadas em baseShelf e baseSection
+    function autoFillLocations() {
+        const baseShelf = document.getElementById('baseShelf').value;
+        const baseSection = document.getElementById('baseSection').value;
+        
+        if (baseShelf || baseSection) {
+            const totalCopies = parseInt(document.getElementById('total_copies').value) || 1;
+            
+            for (let i = 1; i <= totalCopies; i++) {
+                if (baseShelf) {
+                    const shelfInput = document.querySelector(`input[name="shelf_${i}"]`);
+                    if (shelfInput) shelfInput.value = baseShelf.toUpperCase();
+                }
+                
+                if (baseSection) {
+                    const sectionInput = document.querySelector(`input[name="shelf_section_${i}"]`);
+                    if (sectionInput) sectionInput.value = baseSection;
+                }
+                
+                updateLocationPreview(i);
+            }
+        }
+    }
+
+    // Listeners para auto-preenchimento
+    document.getElementById('baseShelf').addEventListener('input', autoFillLocations);
+    document.getElementById('baseSection').addEventListener('input', autoFillLocations);
+
+    // Integração com o scanner
+    document.getElementById('scannerInput').addEventListener('change', function() {
+        const qrCode = this.value.trim();
+        if (qrCode) {
+            fetch('/api/scan-qr', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ qr_code: qrCode }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('isbn').value = qrCode; // Preenche o campo ISBN
+                    this.value = ''; // Limpa o campo de entrada
+                    showSuccess('Código processado com sucesso!');
+                } else {
+                    showError('Erro ao processar o código: ' + (data.message || 'Código não encontrado'));
+                }
+            })
+            .catch(error => {
+                console.error('Erro na requisição:', error);
+                showError('Erro ao conectar com o servidor.');
+            });
+        }
+    });
 </script>
 {% endblock %}
+

@@ -8,7 +8,7 @@
         <h1 class="h2 mb-0">Novo Empréstimo</h1>
         <p class="text-muted mb-0">Registre a saída de um livro para um aluno</p>
     </div>
-    <a href__="{{ url_for('loans') }}" class="btn btn-outline-primary">
+    <a href="{{ url_for('loans') }}" class="btn btn-outline-primary">
         <i class="fas fa-arrow-left me-2"></i>
         Voltar para Empréstimos
     </a>
@@ -18,9 +18,9 @@
 <div class="row justify-content-center mb-4">
     <div class="col-md-8">
         <div class="progress-container">
-            <div class="progress-bar-custom" style="width: {{ (step - 1) * 50 }}%;"></div>
+            <div class="progress-bar-custom" style="width: {{ (step - 1) * 33.33 }}%;"></div>
             <div class="step-item {% if step >= 1 %}active{% endif %}">
-                <div class="step-icon"><i class="fas fa-qrcode"></i></div>
+                <div class="step-icon"><i class="fas fa-barcode"></i></div>
                 <p>1. Livro</p>
             </div>
             <div class="step-item {% if step >= 2 %}active{% endif %}">
@@ -40,20 +40,20 @@
 <div class="card fade-in">
     <div class="card-header">
         <h5 class="mb-0">
-            <i class="fas fa-qrcode text-primary me-2"></i>
+            <i class="fas fa-barcode text-primary me-2"></i>
             Passo 1: Identificar o Livro
         </h5>
     </div>
     <div class="card-body text-center">
         <form method="POST" class="d-inline">
             <input type="hidden" name="step" value="scan_book">
-            <i class="fas fa-qrcode fa-5x text-primary mb-3"></i>
-            <h6 class="mb-3">Escaneie o QR Code ou Código de Barras do Livro</h6>
+            <i class="fas fa-barcode fa-5x text-primary mb-3"></i>
+            <h6 class="mb-3">Escaneie o Código de Barras do Livro</h6>
             <div class="row justify-content-center">
                 <div class="col-md-6">
                     <div class="input-group">
                         <input type="text" class="form-control" name="qr_code" 
-                               id="qrCodeInput" autofocus
+                               id="barcodeInput" autofocus
                                placeholder="Aguardando leitura...">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-arrow-right"></i>
@@ -100,6 +100,11 @@
                 <label for="student_id" class="form-label">Aluno Selecionado</label>
                 <select class="form-select" name="student_id" id="student_id" required>
                     <option value="">Selecione um aluno da lista</option>
+                    {% if students %}
+                        {% for student in students %}
+                            <option value="{{ student.id }}">{{ student.name }} ({{ student.class_room or 'Sem Turma' }})</option>
+                        {% endfor %}
+                    {% endif %}
                 </select>
             </div>
             
@@ -136,6 +141,7 @@
                     <p><strong>Título:</strong> {{ book.title }}</p>
                     <p><strong>Autor:</strong> {{ book.author }}</p>
                     <p><strong>Exemplar:</strong> #{{ copy.copy_number }}</p>
+                    <p><strong>Código de Barras:</strong> {{ book.qr_code }}</p>
                 </div>
                 <div class="col-md-6">
                     <h6><i class="fas fa-user me-2"></i>Aluno</h6>
@@ -149,12 +155,12 @@
                 <div class="col-md-6">
                     <label for="loan_date" class="form-label">Data do Empréstimo</label>
                     <input type="date" class="form-control" name="loan_date" 
-                           value="{{ today|date('Y-m-d') }}" required>
+                           value="{{ today|format_date('%Y-%m-%d') }}" required>
                 </div>
                 <div class="col-md-6">
                     <label for="expected_return_date" class="form-label">Data de Devolução Prevista</label>
                     <input type="date" class="form-control" name="expected_return_date" 
-                           value="{{ return_date|date('Y-m-d') }}" required>
+                           value="{{ return_date|format_date('%Y-%m-%d') }}" required>
                 </div>
                 <div class="col-12">
                     <label for="notes" class="form-label">Observações</label>
@@ -182,10 +188,11 @@ document.getElementById('studentSearch').addEventListener('input', function() {
     const query = this.value;
     if (query.length < 2) {
         document.getElementById('studentList').innerHTML = '';
+        document.getElementById('student_id').innerHTML = '<option value="">Selecione um aluno da lista</option>';
         return;
     }
 
-    fetch(`/api/students/search?q=${query}`)
+    fetch(`/api/students/search?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
         .then(data => {
             const studentList = document.getElementById('studentList');
@@ -198,7 +205,7 @@ document.getElementById('studentSearch').addEventListener('input', function() {
                 const item = document.createElement('a');
                 item.href = '#';
                 item.className = 'list-group-item list-group-item-action';
-                item.textContent = `${student.name} - Turma: ${student.class_room}`;
+                item.textContent = `${student.name} - Turma: ${student.class_room || 'Sem Turma'}`;
                 item.onclick = function(e) {
                     e.preventDefault();
                     document.getElementById('student_id').value = student.id;
@@ -207,13 +214,14 @@ document.getElementById('studentSearch').addEventListener('input', function() {
                 };
                 studentList.appendChild(item);
                 
-                // Adicionar ao select oculto
+                // Adicionar ao select
                 const option = document.createElement('option');
                 option.value = student.id;
-                option.textContent = student.name;
+                option.textContent = `${student.name} (${student.class_room || 'Sem Turma'})`;
                 studentSelect.appendChild(option);
-});
-        });
+            });
+        })
+        .catch(error => console.error('Erro ao buscar alunos:', error));
 });
 </script>
 {% endif %}

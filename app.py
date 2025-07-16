@@ -16,20 +16,19 @@ def create_app(config_class=Config):
     app.jinja_env.filters['days_ago'] = days_ago
     app.jinja_env.filters['days_remaining'] = days_remaining
 
+    with app.app_context():
+        db.create_all()
+
     @app.route('/')
     def dashboard():
-        # Estatísticas para o Dashboard
         total_books = db.session.query(func.count(Book.id)).scalar()
-        total_students = db.session.query(func.count(Student.id)).scalar()
+        total_students = db.session.query(func.count(Student.id)).filter_by(active=True).scalar()
         active_loans = db.session.query(func.count(Loan.id)).filter(Loan.status == 'active').scalar()
         overdue_loans = db.session.query(func.count(Loan.id)).filter(
             Loan.status == 'active', Loan.expected_return_date < datetime.now().date()
         ).scalar()
 
-        # Livros adicionados recentemente
         recent_books = Book.query.order_by(Book.created_date.desc()).limit(5).all()
-
-        # Empréstimos recentes
         recent_loans = db.session.query(Loan, Book, Student).join(Book).join(Student).filter(
             Loan.status == 'active'
         ).order_by(Loan.loan_date.desc()).limit(5).all()
@@ -43,32 +42,29 @@ def create_app(config_class=Config):
                               recent_loans=recent_loans)
 
     # --- Rotas de Livros ---
-    @app.route('/books')
+    @app.route('/books', methods=['GET'])
     def search_books():
         page = request.args.get('page', 1, type=int)
-        search = request.args.get('search', '')
+        search = request.args.get('search', '').strip()
         category_filter = request.args.get('category', '')
-        shelf_filter = request.args.get('shelf', '')
 
         query = Book.query
         if search:
-            search_term = f"%{search}%"
-            query = query.filter(or_(
-                Book.title.ilike(search_term),
-                Book.author.ilike(search_term),
-                Book.isbn.ilike(search_term)
-            ))
+            search_terms = search.split()
+            for term in search_terms:
+                query = query.filter(
+                    or_(
+                        Book.title.ilike(f'%{term}%'),
+                        Book.author.ilike(f'%{term}%'),
+                        Book.isbn.ilike(f'%{term}%'),
+                        Book.qr_code.ilike(f'%{term}%')
+                    )
+                )
         if category_filter:
-            query = query.filter(Book.category == category_filter)
+            query = query.filter_by(category=category_filter)
 
         books = query.order_by(Book.title).paginate(page=page, per_page=Config.BOOKS_PER_PAGE, error_out=False)
         categories = Category.query.filter_by(active=True).order_by(Category.name).all()
-
-        # Calcular exemplares disponíveis para cada livro
-        for book in books.items:
-            book.available_copies = db.session.query(func.count(BookCopy.id)).filter(
-                BookCopy.book_id == book.id, BookCopy.status == 'available'
-            ).scalar()
 
         return render_template('books/search_books.html',
                               books=books,
@@ -80,29 +76,35 @@ def create_app(config_class=Config):
     def add_book():
         if request.method == 'POST':
             try:
-                # Validar e criar o livro
                 publication_year = request.form.get('publication_year')
                 total_copies = request.form.get('total_copies')
-                if not total_copies or not total_copies.isdigit():
+                if not total_copies or not total_copies.isdigit() or int(total_copies) < 1:
                     raise ValueError("Número de cópias inválido")
                 total_copies = int(total_copies)
+
+                qr_code = request.form.get('qr_code', '').strip() or None
+                isbn = request.form.get('isbn', '').strip() or None
+
+                if qr_code and qr_code == isbn:
+                    qr_code = None
+                elif qr_code and Book.query.filter_by(qr_code=qr_code).first():
+                    raise ValueError("O código QR já está em uso por outro livro")
 
                 new_book = Book(
                     title=request.form['title'],
                     author=request.form['author'],
-                    isbn=request.form.get('isbn', '').strip() or None,
+                    isbn=isbn,
                     total_copies=total_copies,
                     category=request.form['category'],
                     publisher=request.form.get('publisher', '').strip() or None,
                     publication_year=int(publication_year) if publication_year and publication_year.isdigit() else None,
                     description=request.form.get('description', '').strip() or None,
-                    qr_code=request.form.get('qr_code', '').strip() or None
+                    qr_code=qr_code
                 )
 
                 db.session.add(new_book)
-                db.session.flush()  # Obter o ID do livro
+                db.session.flush()
 
-                # Criar os exemplares
                 base_shelf = request.form.get('base_shelf', 'A').upper()
                 base_section = request.form.get('base_section', '1')
 
@@ -187,6 +189,177 @@ def create_app(config_class=Config):
             flash(f'Erro ao excluir livro: {str(e)}', 'error')
             return redirect(url_for('book_details', book_id=book_id))
 
+    # --- Rotas de Empréstimos ---
+    @app.route('/loans')
+    def loans():
+        page = request.args.get('page', 1, type=int)
+        status_filter = request.args.get('status', '')
+        search = request.args.get('search', '')
+        class_filter = request.args.get('class_filter', '')
+
+        query = Loan.query
+        if status_filter:
+            if status_filter == 'overdue':
+                query = query.filter(Loan.status == 'active', Loan.expected_return_date < datetime.now().date())
+            elif status_filter in ['active', 'returned']:
+                query = query.filter(Loan.status == status_filter)
+        if search:
+            search_term = f"%{search}%"
+            query = query.join(Student).join(Book).filter(
+                or_(Student.name.ilike(search_term), Book.title.ilike(search_term))
+            )
+        if class_filter:
+            query = query.join(Student).filter(Student.class_room == class_filter)
+
+        loans = query.order_by(Loan.loan_date.desc()).paginate(page=page, per_page=20, error_out=False)
+        active_loans = db.session.query(func.count(Loan.id)).filter(Loan.status == 'active').scalar()
+        returned_loans = db.session.query(func.count(Loan.id)).filter(
+            Loan.status == 'returned',
+            extract('month', Loan.actual_return_date) == datetime.now().month,
+            extract('year', Loan.actual_return_date) == datetime.now().year
+        ).scalar()
+        overdue_loans = db.session.query(func.count(Loan.id)).filter(
+            Loan.status == 'active', Loan.expected_return_date < datetime.now().date()
+        ).scalar()
+        due_this_week = db.session.query(func.count(Loan.id)).filter(
+            Loan.status == 'active',
+            Loan.expected_return_date >= datetime.now().date(),
+            Loan.expected_return_date <= (datetime.now() + timedelta(days=7)).date()
+        ).scalar()
+        classes = [c[0] for c in db.session.query(Student.class_room).filter(
+            Student.active == True, Student.class_room.isnot(None)
+        ).distinct().order_by(Student.class_room).all()]
+
+        return render_template('loans/loans.html',
+                              loans=loans,
+                              active_loans=active_loans,
+                              returned_loans=returned_loans,
+                              overdue_loans=overdue_loans,
+                              due_this_week=due_this_week,
+                              status_filter=status_filter,
+                              search=search,
+                              class_filter=class_filter,
+                              classes=classes)
+
+    @app.route('/loans/new', methods=['GET', 'POST'])
+    def new_loan():
+        student_id = request.args.get('student_id')
+        book_id = request.args.get('book_id')
+        today = datetime.now().date()
+        return_date = today + timedelta(days=7)  # Calcular data de devolução padrão
+        if request.method == 'POST':
+            step = request.form.get('step', '1')
+            if step == 'scan_book' or (not book_id and step == '1'):
+                qr_code = request.form.get('qr_code')
+                book = Book.query.filter_by(qr_code=qr_code).first()
+                if not book:
+                    flash('Livro não encontrado com este código!', 'error')
+                    return render_template('loans/new_loan.html', step=1)
+                available_copy = BookCopy.query.filter_by(book_id=book.id, status='available').first()
+                if not available_copy:
+                    flash('Este livro não possui exemplares disponíveis!', 'error')
+                    return render_template('loans/new_loan.html', step=1)
+                students = Student.query.filter_by(active=True).order_by(Student.name).all()
+                return render_template('loans/new_loan.html', step=2, book=book, copy=available_copy, students=students, today=today, return_date=return_date)
+            elif step == 'select_student':
+                book_id = request.form['book_id'] or book_id
+                copy_id = request.form['copy_id']
+                student_id = request.form['student_id'] or student_id
+                book = Book.query.get(book_id)
+                copy = BookCopy.query.get(copy_id)
+                student = Student.query.get(student_id)
+                if not all([book, copy, student]):
+                    flash('Dados inválidos para o empréstimo!', 'error')
+                    return redirect(url_for('new_loan'))
+                return render_template('loans/new_loan.html', step=3, book=book, copy=copy, student=student, today=today, return_date=return_date)
+            elif step == 'confirm_loan':
+                try:
+                    loan_date = datetime.strptime(request.form['loan_date'], '%Y-%m-%d').date()
+                    expected_return_date = datetime.strptime(request.form['expected_return_date'], '%Y-%m-%d').date()
+                    if expected_return_date < loan_date:
+                        raise ValueError("Data de devolução não pode ser anterior à data de empréstimo")
+                    new_loan = Loan(
+                        student_id=request.form['student_id'],
+                        book_id=request.form['book_id'],
+                        book_copy_id=request.form['copy_id'],
+                        loan_date=loan_date,
+                        expected_return_date=expected_return_date,
+                        notes=request.form.get('notes', '').strip() or None,
+                        status='active'
+                    )
+                    copy = BookCopy.query.get(request.form['copy_id'])
+                    copy.status = 'loaned'
+                    db.session.add(new_loan)
+                    db.session.commit()
+                    flash('Empréstimo realizado com sucesso!', 'success')
+                    return redirect(url_for('loans'))
+                except ValueError as ve:
+                    db.session.rollback()
+                    flash(f'Erro de validação: {str(ve)}', 'error')
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f'Erro ao realizar empréstimo: {str(e)}', 'error')
+        elif book_id and student_id:
+            # Ambos aluno e livro fornecidos, vá diretamente para a confirmação
+            book = Book.query.get(book_id)
+            student = Student.query.get(student_id)
+            if not book or book.available_copies == 0:
+                flash('Livro não encontrado ou sem exemplares disponíveis!', 'error')
+                return redirect(url_for('search_books'))
+            if not student or not student.active:
+                flash('Aluno não encontrado ou inativo!', 'error')
+                return redirect(url_for('students'))
+            available_copy = BookCopy.query.filter_by(book_id=book.id, status='available').first()
+            if not available_copy:
+                flash('Não há exemplares disponíveis para este livro!', 'error')
+                return redirect(url_for('search_books'))
+            return render_template('loans/new_loan.html', step=3, book=book, copy=available_copy, student=student, today=today, return_date=return_date)
+        elif book_id:
+            # Apenas livro fornecido, liste alunos para seleção
+            book = Book.query.get(book_id)
+            if not book or book.available_copies == 0:
+                flash('Livro não encontrado ou sem exemplares disponíveis!', 'error')
+                return redirect(url_for('search_books'))
+            available_copy = BookCopy.query.filter_by(book_id=book.id, status='available').first()
+            if not available_copy:
+                flash('Não há exemplares disponíveis para este livro!', 'error')
+                return redirect(url_for('search_books'))
+            students = Student.query.filter_by(active=True).order_by(Student.name).all()
+            return render_template('loans/new_loan.html', step=2, book=book, copy=available_copy, students=students, today=today, return_date=return_date)
+        elif student_id:
+            # Apenas aluno fornecido, liste livros para seleção
+            student = Student.query.get(student_id)
+            if not student or not student.active:
+                flash('Aluno não encontrado ou inativo!', 'error')
+                return redirect(url_for('students'))
+            books = Book.query.filter(Book.available_copies > 0).order_by(Book.title).all()
+            return render_template('loans/new_loan.html', step=1, student=student, books=books, today=today, return_date=return_date)
+        students = Student.query.filter_by(active=True).order_by(Student.name).all()
+        return render_template('loans/new_loan.html', step=1, students=students, today=today, return_date=return_date)
+
+    @app.route('/loans/<loan_id>/return', methods=['POST'])
+    def return_loan(loan_id):
+        loan = Loan.query.get_or_404(loan_id)
+        if loan.status != 'active':
+            flash('Este empréstimo já foi finalizado!', 'error')
+            return redirect(url_for('loans'))
+        try:
+            loan.status = 'returned'
+            loan.actual_return_date = datetime.now().date()
+            copy = BookCopy.query.get(loan.book_copy_id)
+            copy.status = 'available'
+            db.session.commit()
+            flash('Devolução registrada com sucesso!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao registrar devolução: {str(e)}', 'error')
+        return redirect(url_for('loans'))
+
+    @app.route('/loans/<loan_id>')
+    def loan_details(loan_id):
+        loan = Loan.query.get_or_404(loan_id)
+        return render_template('loans/loan_details.html', loan=loan)
+
     # --- Rotas de Alunos ---
     @app.route('/students')
     def students():
@@ -210,19 +383,20 @@ def create_app(config_class=Config):
             Student.active == True, Student.class_room.isnot(None)
         ).distinct().order_by(Student.class_room).all()]
 
-        # Agrupar alunos por sala
+        # Agrupar alunos por turma para o template
         students_by_class = {}
         for student in students.items:
-            if student.class_room not in students_by_class:
-                students_by_class[student.class_room] = []
-            students_by_class[student.class_room].append(student)
+            class_room = student.class_room or "Sem Turma"
+            if class_room not in students_by_class:
+                students_by_class[class_room] = []
+            students_by_class[class_room].append(student)
 
         return render_template('students/students.html',
                               students=students,
-                              students_by_class=students_by_class,
                               classes=classes,
                               search=search,
-                              class_filter=class_filter)
+                              class_filter=class_filter,
+                              students_by_class=students_by_class)
 
     @app.route('/students/add', methods=['GET', 'POST'])
     def add_student():
@@ -252,7 +426,6 @@ def create_app(config_class=Config):
             except Exception as e:
                 db.session.rollback()
                 flash(f'Erro ao cadastrar aluno: {str(e)}', 'error')
-                print(f"Erro detalhado: {str(e)}")  # Para depuração
         return render_template('students/add_student.html')
 
     @app.route('/students/<student_id>/edit', methods=['GET', 'POST'])
@@ -298,133 +471,6 @@ def create_app(config_class=Config):
             db.session.rollback()
             flash(f'Erro ao remover aluno: {str(e)}', 'error')
         return redirect(url_for('students'))
-
-    # --- Rotas de Empréstimos ---
-    @app.route('/loans')
-    def loans():
-        page = request.args.get('page', 1, type=int)
-        status_filter = request.args.get('status', '')
-        search = request.args.get('search', '')
-        class_filter = request.args.get('class_filter', '')
-
-        query = Loan.query
-        if status_filter:
-            if status_filter == 'overdue':
-                query = query.filter(Loan.status == 'active', Loan.expected_return_date < datetime.now().date())
-            elif status_filter in ['active', 'returned']:
-                query = query.filter(Loan.status == status_filter)
-        if search:
-            search_term = f"%{search}%"
-            query = query.join(Student).join(Book).filter(or_(
-                Student.name.ilike(search_term),
-                Book.title.ilike(search_term)
-            ))
-        if class_filter:
-            query = query.join(Student).filter(Student.class_room == class_filter)
-
-        loans = query.order_by(Loan.loan_date.desc()).paginate(page=page, per_page=20, error_out=False)
-        active_loans = db.session.query(func.count(Loan.id)).filter(Loan.status == 'active').scalar()
-        returned_loans = db.session.query(func.count(Loan.id)).filter(
-            Loan.status == 'returned',
-            extract('month', Loan.actual_return_date) == datetime.now().month,
-            extract('year', Loan.actual_return_date) == datetime.now().year
-        ).scalar()
-        overdue_loans = db.session.query(func.count(Loan.id)).filter(
-            Loan.status == 'active', Loan.expected_return_date < datetime.now().date()
-        ).scalar()
-        due_this_week = db.session.query(func.count(Loan.id)).filter(
-            Loan.status == 'active',
-            Loan.expected_return_date >= datetime.now().date(),
-            Loan.expected_return_date <= (datetime.now() + timedelta(days=7)).date()
-        ).scalar()
-        classes = [c[0] for c in db.session.query(Student.class_room).filter(
-            Student.active == True, Student.class_room.isnot(None)
-        ).distinct().order_by(Student.class_room).all()]
-
-        return render_template('loans/loans.html',
-                              loans=loans,
-                              active_loans=active_loans,
-                              returned_loans=returned_loans,
-                              overdue_loans=overdue_loans,
-                              due_this_week=due_this_week,
-                              status_filter=status_filter,
-                              search=search,
-                              class_filter=class_filter,
-                              classes=classes)
-
-    @app.route('/loans/new', methods=['GET', 'POST'])
-    def new_loan():
-        if request.method == 'POST':
-            step = request.form.get('step', '1')
-            if step == 'scan_book':
-                qr_code = request.form.get('qr_code')
-                book = Book.query.filter_by(qr_code=qr_code).first()
-                if not book:
-                    flash('Livro não encontrado com este código!', 'error')
-                    return render_template('loans/new_loan.html', step=1)
-                available_copy = BookCopy.query.filter_by(book_id=book.id, status='available').first()
-                if not available_copy:
-                    flash('Este livro não possui exemplares disponíveis!', 'error')
-                    return render_template('loans/new_loan.html', step=1)
-                return render_template('loans/new_loan.html', step=2, book=book, copy=available_copy)
-            elif step == 'select_student':
-                book_id = request.form['book_id']
-                copy_id = request.form['copy_id']
-                student_id = request.form['student_id']
-                book = Book.query.get(book_id)
-                copy = BookCopy.query.get(copy_id)
-                student = Student.query.get(student_id)
-                return render_template('loans/new_loan.html', step=3, book=book, copy=copy, student=student)
-            elif step == 'confirm_loan':
-                try:
-                    loan_date = datetime.strptime(request.form['loan_date'], '%Y-%m-%d').date()
-                    expected_return_date = datetime.strptime(request.form['expected_return_date'], '%Y-%m-%d').date()
-                    new_loan = Loan(
-                        student_id=request.form['student_id'],
-                        book_id=request.form['book_id'],
-                        book_copy_id=request.form['copy_id'],
-                        loan_date=loan_date,
-                        expected_return_date=expected_return_date,
-                        notes=request.form.get('notes', '').strip() or None,
-                        status='active'
-                    )
-                    copy = BookCopy.query.get(request.form['copy_id'])
-                    copy.status = 'loaned'
-                    db.session.add(new_loan)
-                    db.session.commit()
-                    flash('Empréstimo realizado com sucesso!', 'success')
-                    return redirect(url_for('loans'))
-                except ValueError as ve:
-                    db.session.rollback()
-                    flash(f'Erro de data: {str(ve)}', 'error')
-                except Exception as e:
-                    db.session.rollback()
-                    flash(f'Erro ao realizar empréstimo: {str(e)}', 'error')
-        students = Student.query.filter_by(active=True).order_by(Student.name).all()
-        return render_template('loans/new_loan.html', step=1, students=students)
-
-    @app.route('/loans/<loan_id>/return', methods=['POST'])
-    def return_loan(loan_id):
-        loan = Loan.query.get_or_404(loan_id)
-        if loan.status != 'active':
-            flash('Este empréstimo já foi finalizado!', 'error')
-            return redirect(url_for('loans'))
-        try:
-            loan.status = 'returned'
-            loan.actual_return_date = datetime.now().date()
-            copy = BookCopy.query.get(loan.book_copy_id)
-            copy.status = 'available'
-            db.session.commit()
-            flash('Devolução registrada com sucesso!', 'success')
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erro ao registrar devolução: {str(e)}', 'error')
-        return redirect(url_for('loans'))
-
-    @app.route('/loans/<loan_id>')
-    def loan_details(loan_id):
-        loan = Loan.query.get_or_404(loan_id)
-        return render_template('loans/loan_details.html', loan=loan)
 
     # --- Rotas de Categorias ---
     @app.route('/categories')
@@ -498,7 +544,6 @@ def create_app(config_class=Config):
     # --- Rotas de Relatórios ---
     @app.route('/reports')
     def reports():
-        # Estatísticas gerais
         total_books = Book.query.count()
         total_students = Student.query.filter_by(active=True).count()
         total_loans = Loan.query.count()
@@ -529,21 +574,18 @@ def create_app(config_class=Config):
             Loan.expected_return_date <= (datetime.now() + timedelta(days=7)).date()
         ).scalar()
 
-        # Top 10 livros mais emprestados
         top_books = db.session.query(
             Book.title, Book.author, func.count(Loan.id).label('loan_count')
         ).join(Loan, Book.id == Loan.book_id).group_by(
             Book.id, Book.title, Book.author
         ).order_by(func.count(Loan.id).desc()).limit(10).all()
 
-        # Top 10 alunos que mais pegam livros
         top_students = db.session.query(
             Student.name, Student.class_room, func.count(Loan.id).label('loan_count')
         ).join(Loan, Student.id == Loan.student_id).group_by(
             Student.id, Student.name, Student.class_room
         ).order_by(func.count(Loan.id).desc()).limit(10).all()
 
-        # Top 10 turmas
         top_classes = db.session.query(
             Student.class_room, func.count(Student.id).label('student_count'),
             func.count(Loan.id).label('loan_count')
@@ -551,7 +593,6 @@ def create_app(config_class=Config):
             Student.class_room
         ).order_by(func.count(Loan.id).desc()).limit(10).all()
 
-        # Empréstimos por mês (últimos 6 meses)
         monthly_loans = db.session.query(
             extract('month', Loan.loan_date).label('month'),
             extract('year', Loan.loan_date).label('year'),
@@ -564,7 +605,6 @@ def create_app(config_class=Config):
             'data': [c for _, _, c in monthly_loans]
         }
 
-        # Livros por categoria
         books_by_category = db.session.query(
             Category.name, func.count(Book.id).label('book_count')
         ).join(Book, Category.id == Book.category).group_by(
@@ -575,7 +615,6 @@ def create_app(config_class=Config):
             'data': [c[1] for c in books_by_category]
         }
 
-        # Taxa de utilização
         total_copies = db.session.query(func.count(BookCopy.id)).scalar()
         loaned_copies = db.session.query(func.count(BookCopy.id)).filter(BookCopy.status == 'loaned').scalar()
         utilization_rate = (loaned_copies / total_copies * 100) if total_copies > 0 else 0
@@ -615,38 +654,105 @@ def create_app(config_class=Config):
     @app.route('/api/books/search')
     def api_search_books():
         query = request.args.get('q', '')
-        books = Book.query.filter(Book.title.ilike(f'%{query}%')).limit(10).all()
+        books = Book.query.filter(
+            or_(Book.title.ilike(f'%{query}%'), Book.qr_code.ilike(f'%{query}%'))
+        ).limit(10).all()
         return jsonify([{
             'id': b.id,
             'title': b.title,
             'author': b.author,
-            'available_copies': db.session.query(func.count(BookCopy.id)).filter(
-                BookCopy.book_id == b.id, BookCopy.status == 'available'
-            ).scalar()
+            'available_copies': b.available_copies
         } for b in books])
 
-    # --- API para Estatísticas em Tempo Real ---
-    @app.route('/api/stats')
-    def api_stats():
-        total_books = db.session.query(func.count(Book.id)).scalar()
-        total_students = db.session.query(func.count(Student.id)).filter_by(active=True).scalar()
-        active_loans = db.session.query(func.count(Loan.id)).filter(Loan.status == 'active').scalar()
-        overdue_loans = db.session.query(func.count(Loan.id)).filter(
-            Loan.status == 'active', Loan.expected_return_date < datetime.now().date()
-        ).scalar()
-        return jsonify({
-            'success': True,
-            'stats': {
-                'total_books': total_books,
-                'active_loans': active_loans,
-                'total_students': total_students,
-                'overdue_loans': overdue_loans
-            }
-        })
+    @app.route('/api/scan-qr', methods=['POST'])
+    def scan_qr():
+        try:
+            data = request.get_json()
+            if not data or 'qr_code' not in data:
+                return jsonify({'success': False, 'message': 'Código não fornecido'}), 400
+            
+            qr_code = data['qr_code'].strip()
+            if not qr_code:
+                return jsonify({'success': False, 'message': 'Código inválido'}), 400
+            
+            book = Book.query.filter_by(qr_code=qr_code).first()
+            if not book:
+                clean_code = qr_code.replace('-', '').replace(' ', '')
+                book = Book.query.filter_by(isbn=clean_code).first()
+            
+            if book:
+                return jsonify({
+                    'success': True,
+                    'book': {
+                        'id': book.id,
+                        'title': book.title,
+                        'author': book.author,
+                        'available_copies': book.available_copies
+                    }
+                })
+            else:
+                return jsonify({'success': False, 'message': 'Livro não encontrado'}), 404
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
+
+    @app.route('/api/book-copies/<int:book_id>')
+    def api_book_copies(book_id):
+        try:
+            book = Book.query.get_or_404(book_id)
+            copies = BookCopy.query.filter_by(book_id=book_id).all()
+            return jsonify({
+                'success': True,
+                'copies': [{
+                    'id': copy.id,
+                    'copy_number': copy.copy_number,
+                    'location': f"{copy.shelf}-{copy.shelf_section}-{copy.position_number}",
+                    'condition': copy.condition,
+                    'status': copy.status
+                } for copy in copies]
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
+
+    @app.route('/api/charts-data')
+    def api_charts_data():
+        try:
+            monthly_loans = db.session.query(
+                extract('month', Loan.loan_date).label('month'),
+                extract('year', Loan.loan_date).label('year'),
+                func.count(Loan.id).label('count')
+            ).filter(Loan.loan_date >= (datetime.now() - timedelta(days=180)).date()).group_by(
+                extract('year', Loan.loan_date), extract('month', Loan.loan_date)
+            ).order_by(extract('year', Loan.loan_date), extract('month', Loan.loan_date)).all()
+            
+            books_by_category = db.session.query(
+                Category.name, func.count(Book.id).label('book_count')
+            ).join(Book, Category.id == Book.category).group_by(Category.id, Category.name).all()
+            
+            return jsonify({
+                'success': True,
+                'loans': {
+                    'labels': [f"{m}/{y}" for m, y, _ in monthly_loans],
+                    'values': [c for _, _, c in monthly_loans]
+                },
+                'categories': {
+                    'labels': [c[0] for c in books_by_category],
+                    'values': [c[1] for c in books_by_category]
+                },
+                'status': {
+                    'labels': ['Disponíveis', 'Emprestados', 'Manutenção'],
+                    'values': [
+                        db.session.query(func.count(BookCopy.id)).filter(BookCopy.status == 'available').scalar(),
+                        db.session.query(func.count(BookCopy.id)).filter(BookCopy.status == 'loaned').scalar(),
+                        db.session.query(func.count(BookCopy.id)).filter(BookCopy.status == 'maintenance').scalar()
+                    ]
+                }
+            })
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 500
 
     return app
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
-      
+    app.run(debug=True, host='0.0.0.0')
+        

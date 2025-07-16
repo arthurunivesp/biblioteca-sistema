@@ -8,7 +8,7 @@
         <h1 class="h2 mb-0">Buscar Livros</h1>
         <p class="text-muted mb-0">Encontre livros no acervo da biblioteca</p>
     </div>
-    <a href__="/books/add" class="btn btn-primary">
+    <a href="/books/add" class="btn btn-primary">
         <i class="fas fa-plus me-2"></i>
         Cadastrar Livro
     </a>
@@ -42,7 +42,7 @@
                 <select class="form-select" name="category">
                     <option value="">Todas as categorias</option>
                     {% for category in categories %}
-                        <option value="{{ category.id }}" {% if category_filter == category.id %}selected{% endif %}>
+                        <option value="{{ category.id }}" {% if category_filter == category.id|string %}selected{% endif %}>
                             {{ category.name }}
                         </option>
                     {% endfor %}
@@ -53,7 +53,7 @@
                     <i class="fas fa-search me-2"></i>
                     Buscar
                 </button>
-                <a href__="/books" class="btn btn-outline-secondary">
+                <a href="/books" class="btn btn-outline-secondary">
                     <i class="fas fa-times me-2"></i>
                     Limpar
                 </a>
@@ -69,7 +69,7 @@
             <i class="fas fa-list text-primary me-2"></i>
             Resultados da Busca
         </h5>
-        {% if books %}
+        {% if books and books.items %}
             <span class="badge bg-primary">
                 {{ books.total }} livro{{ 's' if books.total != 1 else '' }} encontrado{{ 's' if books.total != 1 else '' }}
             </span>
@@ -124,7 +124,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% set first_copy = book.copies|first %}
+                                {% set first_copy = book.copies|first if book.copies else none %}
                                 {% if first_copy %}
                                     <span class="badge bg-secondary">
                                         <i class="fas fa-map-marker-alt me-1"></i>
@@ -154,16 +154,16 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href__="/books/{{ book.id }}" class="btn btn-outline-primary btn-sm" 
+                                    <a href="/books/{{ book.id }}" class="btn btn-outline-primary btn-sm" 
                                        data-bs-toggle="tooltip" title="Ver detalhes">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href__="/books/{{ book.id }}/edit" class="btn btn-outline-warning btn-sm"
+                                    <a href="/books/{{ book.id }}/edit" class="btn btn-outline-warning btn-sm"
                                        data-bs-toggle="tooltip" title="Editar">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     {% if book.available_copies > 0 %}
-                                        <a href__="/loans/new?book={{ book.id }}" class="btn btn-outline-success btn-sm"
+                                        <a href="/loans/new?book_id={{ book.id }}" class="btn btn-outline-success btn-sm"
                                            data-bs-toggle="tooltip" title="Emprestar">
                                             <i class="fas fa-hand-holding"></i>
                                         </a>
@@ -189,7 +189,7 @@
                     <ul class="pagination justify-content-center">
                         {% if books.has_prev %}
                             <li class="page-item">
-                                <a class="page-link" href__="{{ url_for('search_books', page=books.prev_num, search=search, category=category_filter) }}">
+                                <a class="page-link" href="{{ url_for('search_books', page=books.prev_num, search=search, category=category_filter) }}">
                                     <i class="fas fa-chevron-left"></i>
                                 </a>
                             </li>
@@ -199,7 +199,7 @@
                             {% if page_num %}
                                 {% if page_num != books.page %}
                                     <li class="page-item">
-                                        <a class="page-link" href__="{{ url_for('search_books', page=page_num, search=search, category=category_filter) }}">
+                                        <a class="page-link" href="{{ url_for('search_books', page=page_num, search=search, category=category_filter) }}">
                                             {{ page_num }}
                                         </a>
                                     </li>
@@ -217,7 +217,7 @@
                         
                         {% if books.has_next %}
                             <li class="page-item">
-                                <a class="page-link" href__="{{ url_for('search_books', page=books.next_num, search=search, category=category_filter) }}">
+                                <a class="page-link" href="{{ url_for('search_books', page=books.next_num, search=search, category=category_filter) }}">
                                     <i class="fas fa-chevron-right"></i>
                                 </a>
                             </li>
@@ -233,7 +233,7 @@
                     <p class="text-muted mb-3">
                         Tente buscar com outros termos ou verifique os filtros aplicados
                     </p>
-                    <a href__="/books" class="btn btn-outline-primary">
+                    <a href="/books" class="btn btn-outline-primary">
                         <i class="fas fa-times me-2"></i>
                         Limpar Filtros
                     </a>
@@ -243,7 +243,7 @@
                     <p class="text-muted mb-3">
                         Comece adicionando o primeiro livro ao acervo da biblioteca
                     </p>
-                    <a href__="/books/add" class="btn btn-primary">
+                    <a href="/books/add" class="btn btn-primary">
                         <i class="fas fa-plus me-2"></i>
                         Cadastrar Primeiro Livro
                     </a>
