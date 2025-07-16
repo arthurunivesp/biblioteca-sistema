@@ -28,18 +28,104 @@ def create_app(config_class=Config):
             Loan.status == 'active', Loan.expected_return_date < datetime.now().date()
         ).scalar()
 
+        # Estatísticas adicionais
+        total_loans = Loan.query.count()
+        books_this_month = Book.query.filter(
+            extract('month', Book.created_date) == datetime.now().month,
+            extract('year', Book.created_date) == datetime.now().year
+        ).count()
+        students_this_month = Student.query.filter(
+            extract('month', Student.created_date) == datetime.now().month,
+            extract('year', Student.created_date) == datetime.now().year
+        ).filter_by(active=True).count()
+        loans_this_month = Loan.query.filter(
+            extract('month', Loan.loan_date) == datetime.now().month,
+            extract('year', Loan.loan_date) == datetime.now().year
+        ).count()
+        returned_loans = db.session.query(func.count(Loan.id)).filter(
+            Loan.status == 'returned',
+            extract('month', Loan.actual_return_date) == datetime.now().month,
+            extract('year', Loan.actual_return_date) == datetime.now().year
+        ).scalar()
+        due_this_week = db.session.query(func.count(Loan.id)).filter(
+            Loan.status == 'active',
+            Loan.expected_return_date >= datetime.now().date(),
+            Loan.expected_return_date <= (datetime.now() + timedelta(days=7)).date()
+        ).scalar()
+
+        # Taxa de Utilização
+        total_copies = db.session.query(func.count(BookCopy.id)).scalar()
+        loaned_copies = db.session.query(func.count(BookCopy.id)).filter(BookCopy.status == 'loaned').scalar()
+        utilization_rate = (loaned_copies / total_copies * 100) if total_copies > 0 else 0
+
+        # Rankings (simplificados, ajuste conforme necessário)
+        top_books = db.session.query(
+            Book.title, Book.author, func.count(Loan.id).label('loan_count')
+        ).join(Loan, Book.id == Loan.book_id).group_by(
+            Book.id, Book.title, Book.author
+        ).order_by(func.count(Loan.id).desc()).limit(5).all()
+
+        top_students = db.session.query(
+            Student.name, Student.class_room, func.count(Loan.id).label('loan_count')
+        ).join(Loan, Student.id == Loan.student_id).group_by(
+            Student.id, Student.name, Student.class_room
+        ).order_by(func.count(Loan.id).desc()).limit(5).all()
+
+        top_classes = db.session.query(
+            Student.class_room, func.count(Student.id).label('student_count'),
+            func.count(Loan.id).label('loan_count')
+        ).join(Loan, Student.id == Loan.student_id, isouter=True).group_by(
+            Student.class_room
+        ).order_by(func.count(Loan.id).desc()).limit(5).all()
+
+        # Dados para gráficos (opcional, se desejar gráficos no dashboard)
+        monthly_loans = db.session.query(
+            extract('month', Loan.loan_date).label('month'),
+            extract('year', Loan.loan_date).label('year'),
+            func.count(Loan.id).label('count')
+        ).filter(Loan.loan_date >= (datetime.now() - timedelta(days=180)).date()).group_by(
+            extract('year', Loan.loan_date), extract('month', Loan.loan_date)
+        ).order_by(extract('year', Loan.loan_date), extract('month', Loan.loan_date)).all()
+        loans_chart_data = {
+            'labels': [f"{m}/{y}" for m, y, _ in monthly_loans],
+            'data': [c for _, _, c in monthly_loans]
+        }
+
+        books_by_category = db.session.query(
+            Category.name, func.count(Book.id).label('book_count')
+        ).join(Book, Category.id == Book.category).group_by(
+            Category.id, Category.name
+        ).order_by(func.count(Book.id).desc()).all()
+        categories_chart_data = {
+            'labels': [c[0] for c in books_by_category],
+            'data': [c[1] for c in books_by_category]
+        }
+
+        # Dados recentes
         recent_books = Book.query.order_by(Book.created_date.desc()).limit(5).all()
         recent_loans = db.session.query(Loan, Book, Student).join(Book).join(Student).filter(
             Loan.status == 'active'
         ).order_by(Loan.loan_date.desc()).limit(5).all()
 
         return render_template('dashboard.html',
-                              total_books=total_books,
-                              total_students=total_students,
-                              active_loans=active_loans,
-                              overdue_loans=overdue_loans,
-                              recent_books=recent_books,
-                              recent_loans=recent_loans)
+                            total_books=total_books,
+                            total_students=total_students,
+                            total_loans=total_loans,
+                            active_loans=active_loans,
+                            overdue_loans=overdue_loans,
+                            utilization_rate=round(utilization_rate, 2),
+                            books_this_month=books_this_month,
+                            students_this_month=students_this_month,
+                            loans_this_month=loans_this_month,
+                            returned_loans=returned_loans,
+                            due_this_week=due_this_week,
+                            top_books=top_books,
+                            top_students=top_students,
+                            top_classes=top_classes,
+                            loans_chart_data=loans_chart_data,
+                            categories_chart_data=categories_chart_data,
+                            recent_books=recent_books,
+                            recent_loans=recent_loans)
 
     # --- Rotas de Livros ---
     @app.route('/books', methods=['GET'])
@@ -783,4 +869,3 @@ def create_app(config_class=Config):
 if __name__ == '__main__':
     app = create_app()
     app.run(debug=True, host='0.0.0.0')
-    

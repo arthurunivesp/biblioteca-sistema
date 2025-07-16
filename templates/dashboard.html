@@ -26,11 +26,11 @@
         <div class="stat-icon">
             <i class="fas fa-book"></i>
         </div>
-        <div class="stat-number" id="stat-total-books">-</div>
+        <div class="stat-number">{{ total_books }}</div>
         <div class="stat-label">Total de Livros</div>
         <div class="stat-trend positive">
             <i class="fas fa-arrow-up"></i>
-            +12% este mês
+            +{{ books_this_month }} este mês
         </div>
     </div>
     
@@ -38,11 +38,11 @@
         <div class="stat-icon" style="background: linear-gradient(135deg, #10b981 0%, #047857 100%);">
             <i class="fas fa-users"></i>
         </div>
-        <div class="stat-number" id="stat-total-students">-</div>
+        <div class="stat-number">{{ total_students }}</div>
         <div class="stat-label">Alunos Cadastrados</div>
         <div class="stat-trend positive">
             <i class="fas fa-arrow-up"></i>
-            +8% este mês
+            +{{ students_this_month }} este mês
         </div>
     </div>
     
@@ -50,7 +50,7 @@
         <div class="stat-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
             <i class="fas fa-book-open"></i>
         </div>
-        <div class="stat-number" id="stat-active-loans">-</div>
+        <div class="stat-number">{{ active_loans }}</div>
         <div class="stat-label">Empréstimos Ativos</div>
         <div class="stat-trend">
             <i class="fas fa-clock"></i>
@@ -62,7 +62,7 @@
         <div class="stat-icon" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
             <i class="fas fa-exclamation-triangle"></i>
         </div>
-        <div class="stat-number" id="stat-overdue-loans">-</div>
+        <div class="stat-number">{{ overdue_loans }}</div>
         <div class="stat-label">Empréstimos em Atraso</div>
         {% if overdue_loans > 0 %}
             <div class="stat-trend negative">
@@ -279,4 +279,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+    {{ super() }}
+    <!-- Scripts para os mini gráficos, se houver -->
 {% endblock %}
