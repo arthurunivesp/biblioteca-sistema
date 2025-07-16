@@ -39,7 +39,7 @@
             </div>
             <div class="col-md-3">
                 <label for="category" class="form-label">Categoria</label>
-                <select class="form-select" name="category">
+                <select class="form-select" name="category" onchange="this.form.submit()">
                     <option value="">Todas as categorias</option>
                     {% for category in categories %}
                         <option value="{{ category.id }}" {% if category_filter == category.id|string %}selected{% endif %}>
@@ -77,110 +77,87 @@
     </div>
     <div class="card-body">
         {% if books and books.items %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Livro</th>
-                            <th>Categoria</th>
-                            <th>Localização</th>
-                            <th>Exemplares</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for book in books.items %}
-                        <tr>
-                            <td>
-                                <div class="d-flex align-items-center">
-                                    <div class="book-cover me-3">
-                                        <i class="fas fa-book"></i>
+            <div class="accordion" id="booksAccordion">
+                {% for category_name, books_list in books_by_category.items() %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading{{ loop.index }}">
+                            <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="true" aria-controls="collapse{{ loop.index }}">
+                                {{ category_name }} ({{ books_list|length }} livro{{ 's' if books_list|length != 1 else '' }})
+                            </button>
+                        </h2>
+                        <div id="collapse{{ loop.index }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#booksAccordion">
+                            <div class="accordion-body">
+                                <div class="row">
+                                    {% for book in books_list %}
+                                    <div class="col-md-6 col-lg-4 mb-4">
+                                        <div class="book-card">
+                                            <div class="book-header">
+                                                <div class="book-cover">
+                                                    <i class="fas fa-book"></i>
+                                                </div>
+                                                <div class="book-info">
+                                                    <h6 class="book-title">{{ book.title }}</h6>
+                                                    <div class="book-details">
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-user me-1"></i>
+                                                            {{ book.author }}
+                                                        </small>
+                                                        {% if book.isbn %}
+                                                            <br>
+                                                            <small class="text-muted">ISBN: {{ book.isbn }}</small>
+                                                        {% endif %}
+                                                        {% if book.publication_year %}
+                                                            <br>
+                                                            <small class="text-muted">Ano: {{ book.publication_year }}</small>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="book-body">
+                                                <div class="book-stat">
+                                                    <i class="fas fa-map-marker-alt text-muted me-2"></i>
+                                                    <small>
+                                                        {% set first_copy = book.copies|first if book.copies else none %}
+                                                        {{ first_copy.shelf }}-{{ first_copy.shelf_section }}-{{ first_copy.position_number }} {% if book.total_copies > 1 %}+ {{ book.total_copies - 1 }} outros{% endif %}
+                                                    </small>
+                                                </div>
+                                                <div class="book-stat">
+                                                    <i class="fas fa-check-circle text-muted me-2"></i>
+                                                    <small>{{ book.available_copies }}/{{ book.total_copies }} disponíveis</small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="book-actions">
+                                                <a href="/books/{{ book.id }}" class="btn btn-outline-primary btn-sm">
+                                                    <i class="fas fa-eye"></i>
+                                                    Ver
+                                                </a>
+                                                <a href="/books/{{ book.id }}/edit" class="btn btn-outline-warning btn-sm">
+                                                    <i class="fas fa-edit"></i>
+                                                    Editar
+                                                </a>
+                                                {% if book.available_copies > 0 %}
+                                                    <a href="/loans/new?book_id={{ book.id }}" class="btn btn-outline-success btn-sm">
+                                                        <i class="fas fa-hand-holding"></i>
+                                                        Empréstimo
+                                                    </a>
+                                                {% endif %}
+                                                <form method="POST" action="/books/{{ book.id }}/delete" class="d-inline"
+                                                      onsubmit="return confirmDelete('Tem certeza que deseja excluir este livro?')">
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <strong>{{ book.title }}</strong>
-                                        <br>
-                                        <small class="text-muted">
-                                            <i class="fas fa-user me-1"></i>
-                                            {{ book.author }}
-                                        </small>
-                                        {% if book.isbn %}
-                                            <br>
-                                            <small class="text-muted">ISBN: {{ book.isbn }}</small>
-                                        {% endif %}
-                                        {% if book.publication_year %}
-                                            <br>
-                                            <small class="text-muted">Ano: {{ book.publication_year }}</small>
-                                        {% endif %}
-                                    </div>
+                                    {% endfor %}
                                 </div>
-                            </td>
-                            <td>
-                                {% if book.category_obj %}
-                                    <span class="badge" style="background-color: {{ book.category_obj.color }};">
-                                        {{ book.category_obj.name }}
-                                    </span>
-                                {% else %}
-                                    <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% set first_copy = book.copies|first if book.copies else none %}
-                                {% if first_copy %}
-                                    <span class="badge bg-secondary">
-                                        <i class="fas fa-map-marker-alt me-1"></i>
-                                        {{ first_copy.shelf }}-{{ first_copy.shelf_section }}-{{ first_copy.position_number }}
-                                    </span>
-                                    {% if book.total_copies > 1 %}
-                                        <br><small class="text-muted">+ {{ book.total_copies - 1 }} outros</small>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">-</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="availability {% if book.available_copies > 0 %}available{% elif book.available_copies > book.total_copies * 0.3 %}limited{% else %}unavailable{% endif %}">
-                                    <strong>{{ book.available_copies }}/{{ book.total_copies }}</strong>
-                                    <br>
-                                    <small>
-                                        {% if book.available_copies > 0 %}
-                                            <i class="fas fa-check-circle text-success me-1"></i>
-                                            Disponível
-                                        {% else %}
-                                            <i class="fas fa-times-circle text-danger me-1"></i>
-                                            Indisponível
-                                        {% endif %}
-                                    </small>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="btn-group" role="group">
-                                    <a href="/books/{{ book.id }}" class="btn btn-outline-primary btn-sm" 
-                                       data-bs-toggle="tooltip" title="Ver detalhes">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="/books/{{ book.id }}/edit" class="btn btn-outline-warning btn-sm"
-                                       data-bs-toggle="tooltip" title="Editar">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    {% if book.available_copies > 0 %}
-                                        <a href="/loans/new?book_id={{ book.id }}" class="btn btn-outline-success btn-sm"
-                                           data-bs-toggle="tooltip" title="Emprestar">
-                                            <i class="fas fa-hand-holding"></i>
-                                        </a>
-                                    {% endif %}
-                                    <form method="POST" action="/books/{{ book.id }}/delete" class="d-inline"
-                                          onsubmit="return confirmDelete('Tem certeza que deseja excluir este livro?')">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm"
-                                                data-bs-toggle="tooltip" title="Excluir">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
             
             <!-- Paginação -->

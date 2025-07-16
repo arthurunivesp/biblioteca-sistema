@@ -66,11 +66,20 @@ def create_app(config_class=Config):
         books = query.order_by(Book.title).paginate(page=page, per_page=Config.BOOKS_PER_PAGE, error_out=False)
         categories = Category.query.filter_by(active=True).order_by(Category.name).all()
 
+        # Agrupar livros por categoria
+        books_by_category = {}
+        for book in books.items:
+            category_name = book.category_obj.name if book.category_obj else "Sem Categoria"
+            if category_name not in books_by_category:
+                books_by_category[category_name] = []
+            books_by_category[category_name].append(book)
+
         return render_template('books/search_books.html',
-                              books=books,
-                              categories=categories,
-                              search=search,
-                              category_filter=category_filter)
+                            books=books,
+                            categories=categories,
+                            search=search,
+                            category_filter=category_filter,
+                            books_by_category=books_by_category)
 
     @app.route('/books/add', methods=['GET', 'POST'])
     def add_book():
@@ -755,4 +764,3 @@ def create_app(config_class=Config):
 if __name__ == '__main__':
     app = create_app()
     app.run(debug=True, host='0.0.0.0')
-        
